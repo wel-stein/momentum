@@ -13,9 +13,14 @@ export function SyncBanner() {
         <div className="leading-tight">
           <span className="font-medium">Supabase sync issue:</span> {error}{" "}
           <span className="text-amber-200/70">
-            Open the Supabase SQL Editor and run{" "}
+            If a column or table is missing, you have an unapplied migration.
+            Run{" "}
             <code className="rounded bg-amber-500/10 px-1 py-0.5 font-mono text-[10px]">
-              supabase/migrations/0001_initial.sql
+              npm run migrate
+            </code>{" "}
+            to apply everything in{" "}
+            <code className="rounded bg-amber-500/10 px-1 py-0.5 font-mono text-[10px]">
+              supabase/migrations/
             </code>
             , then reload.
           </span>

@@ -282,19 +282,21 @@ export const useStore = create<State & Actions>()(
         }
 
         const remote = await fetchAllBoards();
-        if (remote == null) {
+        if (!remote.ok) {
+          // Most common cause: a migration hasn't been applied and the
+          // SELECT references a column that doesn't exist yet. Surface the
+          // raw Postgres message so the fix is obvious.
           set({
             currentUserId,
             hydrated: true,
             loading: false,
-            syncError:
-              "Could not reach Supabase. Did you run the SQL migration in the dashboard?",
+            syncError: `Supabase rejected the query: ${remote.error}`,
           });
           return;
         }
         // Only seed when signed in — RLS rejects anon writes, so seeding
         // would fail silently and leave the dashboard empty on every load.
-        if (remote.length === 0 && user) {
+        if (remote.data.length === 0 && user) {
           const sample = makeSampleBoard(currentUserId, user);
           set({
             currentUserId,
@@ -307,7 +309,7 @@ export const useStore = create<State & Actions>()(
         }
         set({
           currentUserId,
-          boards: remote,
+          boards: remote.data,
           hydrated: true,
           loading: false,
         });

@@ -51,9 +51,11 @@ function logErr(label: string, err: unknown) {
   if (err) console.error(`[momentum/db] ${label}`, err);
 }
 
-export async function fetchAllBoards(): Promise<Board[] | null> {
+export type FetchResult<T> = { ok: true; data: T } | { ok: false; error: string };
+
+export async function fetchAllBoards(): Promise<FetchResult<Board[]>> {
   const sb = getSupabase();
-  if (!sb) return null;
+  if (!sb) return { ok: false, error: "Supabase client is not configured." };
   const { data, error } = await sb
     .from("boards")
     .select(
@@ -67,9 +69,9 @@ export async function fetchAllBoards(): Promise<Board[] | null> {
     .order("updated_at", { ascending: false });
   if (error) {
     logErr("fetchAllBoards", error);
-    return null;
+    return { ok: false, error: error.message };
   }
-  return (data ?? []).map(rowToBoard);
+  return { ok: true, data: (data ?? []).map(rowToBoard) };
 }
 
 function rowToBoard(b: BoardRow & {
