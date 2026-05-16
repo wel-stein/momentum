@@ -95,13 +95,13 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                 <table className="min-w-full text-[13px]">
                   <thead className="bg-white/[0.015] text-[10px] uppercase tracking-wider text-zinc-500">
                     <tr className="border-b border-white/[0.06]">
-                      <Th className="w-[60px]">ID</Th>
-                      <Th className="w-[36%]">Task</Th>
-                      <Th>Owners</Th>
-                      <Th>Status</Th>
-                      <Th>Priority</Th>
-                      <Th>Due</Th>
-                      <Th>Tags</Th>
+                      <Th className="w-[64px]">ID</Th>
+                      <Th className="w-[48%] min-w-[320px]">Task</Th>
+                      <Th className="w-[96px]">Owners</Th>
+                      <Th className="w-[140px]">Status</Th>
+                      <Th className="w-[120px]">Priority</Th>
+                      <Th className="w-[88px]">Due</Th>
+                      <Th className="w-[160px]">Tags</Th>
                       <Th className="w-8" />
                     </tr>
                   </thead>
