@@ -26,6 +26,7 @@ import { TaskModal } from "./TaskModal";
 import { InviteMembersModal } from "./InviteMembersModal";
 import { ShareModal } from "./ShareModal";
 import { Modal } from "./Modal";
+import { RealtimeSync } from "./RealtimeSync";
 import { SyncBanner } from "./SyncBanner";
 import { BoardProvider } from "./BoardContext";
 import { UserMenu } from "./UserMenu";
@@ -343,6 +344,10 @@ export function BoardShell({
             );
           })()}
         </main>
+
+        {/* Realtime is only useful in edit-mode (the share/read-only page
+            uses a one-shot fetch and shouldn't need to react to changes). */}
+        {!readOnlyProp && !boardOverride && <RealtimeSync boardId={board.id} />}
 
         <TaskModal
           board={board}

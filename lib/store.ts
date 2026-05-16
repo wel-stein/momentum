@@ -3,17 +3,17 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { nanoid } from "nanoid";
-import {
+import type {
   Board,
   Group,
-  GROUP_COLORS,
   Member,
   Priority,
   StatusKey,
   Task,
   ViewType,
-  BOARD_EMOJIS,
 } from "./types";
+import { BOARD_EMOJIS, GROUP_COLORS } from "./constants";
+import { makeSampleBoard } from "./sample";
 import { pickAvatarColor } from "./utils";
 import {
   deleteBoard as dbDeleteBoard,
@@ -79,163 +79,31 @@ interface Actions {
 
   enableSharing: (boardId: string) => string | null;
   disableSharing: (boardId: string) => void;
+
+  /**
+   * Merge a server-side change (received via Supabase Realtime) into the
+   * local store. Idempotent: applying our own echo is a no-op, applying
+   * a stale event is skipped via updated_at comparison.
+   */
+  applyRemoteChange: (change: RemoteChange) => void;
+}
+
+export interface RemoteChange {
+  eventType: "INSERT" | "UPDATE" | "DELETE";
+  table:
+    | "boards"
+    | "board_groups"
+    | "board_members"
+    | "tasks"
+    | "task_assignees";
+  new: Record<string, unknown> | null;
+  old: Record<string, unknown> | null;
 }
 
 function nowIso() {
   return new Date().toISOString();
 }
 
-function makeSampleBoard(
-  currentUserId: string,
-  currentUser: CurrentUser | null,
-): Board {
-  const now = nowIso();
-  const inDays = (n: number) => {
-    const d = new Date();
-    d.setDate(d.getDate() + n);
-    return d.toISOString();
-  };
-  const groupA: Group = {
-    id: nanoid(8),
-    name: "This week",
-    color: GROUP_COLORS[0],
-  };
-  const groupB: Group = {
-    id: nanoid(8),
-    name: "Next week",
-    color: GROUP_COLORS[1],
-  };
-  const groupC: Group = {
-    id: nanoid(8),
-    name: "Backlog",
-    color: GROUP_COLORS[3],
-  };
-
-  const me: Member = currentUser
-    ? {
-        id: currentUserId,
-        authUserId: currentUser.id,
-        name: currentUser.name,
-        email: currentUser.email,
-        avatarColor: pickAvatarColor(currentUser.email),
-        avatarUrl: currentUser.avatarUrl ?? null,
-        role: "owner",
-      }
-    : {
-        id: currentUserId,
-        name: "You",
-        email: "you@momentum.app",
-        avatarColor: pickAvatarColor(currentUserId),
-        role: "owner",
-      };
-  const alex: Member = {
-    id: nanoid(8),
-    name: "Alex Rivera",
-    email: "alex@momentum.app",
-    avatarColor: pickAvatarColor("alex"),
-    role: "admin",
-  };
-  const sam: Member = {
-    id: nanoid(8),
-    name: "Sam Chen",
-    email: "sam@momentum.app",
-    avatarColor: pickAvatarColor("sam"),
-    role: "member",
-  };
-
-  const tasks: Task[] = [
-    {
-      id: nanoid(8),
-      title: "Design landing page hero",
-      description: "Mockup three options and review with the team.",
-      status: "in_progress",
-      priority: "high",
-      assigneeIds: [alex.id],
-      startDate: inDays(-1),
-      dueDate: inDays(2),
-      tags: ["design", "marketing"],
-      groupId: groupA.id,
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: nanoid(8),
-      title: "Set up CI pipeline",
-      status: "review",
-      priority: "medium",
-      assigneeIds: [me.id, sam.id],
-      startDate: inDays(0),
-      dueDate: inDays(3),
-      tags: ["infra"],
-      groupId: groupA.id,
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: nanoid(8),
-      title: "Write onboarding emails",
-      status: "not_started",
-      priority: "low",
-      assigneeIds: [sam.id],
-      startDate: inDays(4),
-      dueDate: inDays(8),
-      tags: ["growth"],
-      groupId: groupB.id,
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: nanoid(8),
-      title: "Investigate Sentry alerts",
-      status: "stuck",
-      priority: "critical",
-      assigneeIds: [me.id],
-      startDate: inDays(-2),
-      dueDate: inDays(1),
-      tags: ["bug"],
-      groupId: groupA.id,
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: nanoid(8),
-      title: "Q3 roadmap workshop",
-      status: "not_started",
-      priority: "medium",
-      assigneeIds: [me.id, alex.id, sam.id],
-      startDate: inDays(10),
-      dueDate: inDays(11),
-      tags: ["planning"],
-      groupId: groupB.id,
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: nanoid(8),
-      title: "Mobile responsive audit",
-      status: "done",
-      priority: "low",
-      assigneeIds: [alex.id],
-      tags: ["design"],
-      groupId: groupC.id,
-      createdAt: now,
-      updatedAt: now,
-    },
-  ];
-
-  return {
-    id: nanoid(8),
-    name: "Product launch",
-    description: "Cross-functional plan for the v1 launch.",
-    emoji: "🚀",
-    view: "kanban",
-    groups: [groupA, groupB, groupC],
-    tasks,
-    members: [me, alex, sam],
-    createdAt: now,
-    updatedAt: now,
-  };
-}
 
 // fire-and-forget; swallow rejections so we never crash the UI
 function fnf<T>(p: Promise<T>) {
@@ -769,6 +637,10 @@ export const useStore = create<State & Actions>()(
         }));
         if (touched) fnf(upsertMember(boardId, touched));
       },
+
+      applyRemoteChange: (c) => {
+        set((s) => applyRemoteChangeReducer(s.boards, c));
+      },
     }),
     {
       name: "momentum-store",
@@ -778,3 +650,210 @@ export const useStore = create<State & Actions>()(
     },
   ),
 );
+
+// -----------------------------------------------------------------------------
+// Realtime reducer.
+//
+// Translates a Supabase postgres_changes payload (INSERT / UPDATE / DELETE on
+// one of our five tables) into a state slice. Pure: returns either a new
+// { boards } object or the original slice (to skip the update).
+// -----------------------------------------------------------------------------
+
+function applyRemoteChangeReducer(
+  boards: Board[],
+  c: RemoteChange,
+): Partial<State> | typeof NO_CHANGE {
+  switch (c.table) {
+    case "boards":
+      return mergeBoardRow(boards, c);
+    case "board_groups":
+      return mergeGroupRow(boards, c);
+    case "board_members":
+      return mergeMemberRow(boards, c);
+    case "tasks":
+      return mergeTaskRow(boards, c);
+    case "task_assignees":
+      return mergeAssigneeRow(boards, c);
+    default:
+      return NO_CHANGE;
+  }
+}
+
+const NO_CHANGE = {} as const;
+
+function findBoardIdx(boards: Board[], id: string | undefined) {
+  if (!id) return -1;
+  return boards.findIndex((b) => b.id === id);
+}
+
+function mergeBoardRow(boards: Board[], c: RemoteChange) {
+  const id = (c.new?.id ?? c.old?.id) as string | undefined;
+  const idx = findBoardIdx(boards, id);
+  if (c.eventType === "DELETE") {
+    if (idx < 0) return NO_CHANGE;
+    return { boards: boards.filter((_, i) => i !== idx) };
+  }
+  if (idx < 0 || !c.new) return NO_CHANGE; // INSERT of a board we don't own
+  const row = c.new;
+  const incomingUpdated = (row.updated_at as string) ?? "";
+  if (incomingUpdated && incomingUpdated < boards[idx].updatedAt) {
+    return NO_CHANGE;
+  }
+  const updated: Board = {
+    ...boards[idx],
+    name: (row.name as string) ?? boards[idx].name,
+    description: (row.description as string | null) ?? undefined,
+    emoji: ((row.emoji as string) ?? boards[idx].emoji) || "📋",
+    view: ((row.view as Board["view"]) ?? boards[idx].view) || "kanban",
+    shareToken: (row.share_token as string | null) ?? null,
+    updatedAt: incomingUpdated || boards[idx].updatedAt,
+  };
+  const next = boards.slice();
+  next[idx] = updated;
+  return { boards: next };
+}
+
+function mergeGroupRow(boards: Board[], c: RemoteChange) {
+  const boardId = (c.new?.board_id ?? c.old?.board_id) as string | undefined;
+  const idx = findBoardIdx(boards, boardId);
+  if (idx < 0) return NO_CHANGE;
+  const board = { ...boards[idx], groups: boards[idx].groups.slice() };
+  if (c.eventType === "DELETE") {
+    const gid = c.old?.id as string | undefined;
+    if (!gid) return NO_CHANGE;
+    board.groups = board.groups.filter((g) => g.id !== gid);
+    board.tasks = board.tasks.filter((t) => t.groupId !== gid);
+  } else if (c.new) {
+    const r = c.new;
+    const g: Group = {
+      id: r.id as string,
+      name: r.name as string,
+      color: r.color as string,
+      collapsed: (r.collapsed as boolean) ?? false,
+    };
+    const gi = board.groups.findIndex((x) => x.id === g.id);
+    if (gi >= 0) board.groups[gi] = g;
+    else board.groups.push(g);
+  } else {
+    return NO_CHANGE;
+  }
+  const next = boards.slice();
+  next[idx] = board;
+  return { boards: next };
+}
+
+function mergeMemberRow(boards: Board[], c: RemoteChange) {
+  const boardId = (c.new?.board_id ?? c.old?.board_id) as string | undefined;
+  const idx = findBoardIdx(boards, boardId);
+  if (idx < 0) return NO_CHANGE;
+  const board = { ...boards[idx], members: boards[idx].members.slice() };
+  if (c.eventType === "DELETE") {
+    const mid = c.old?.id as string | undefined;
+    if (!mid) return NO_CHANGE;
+    board.members = board.members.filter((m) => m.id !== mid);
+    board.tasks = board.tasks.map((t) =>
+      t.assigneeIds.includes(mid)
+        ? { ...t, assigneeIds: t.assigneeIds.filter((id) => id !== mid) }
+        : t,
+    );
+  } else if (c.new) {
+    const r = c.new;
+    const m: Member = {
+      id: r.id as string,
+      name: r.name as string,
+      email: r.email as string,
+      avatarColor: (r.avatar_color as string) ?? "#3a5dff",
+      avatarUrl: (r.avatar_url as string | null) ?? null,
+      authUserId: (r.auth_user_id as string | null) ?? null,
+      role: ((r.role as Member["role"]) ?? "member") as Member["role"],
+    };
+    const mi = board.members.findIndex((x) => x.id === m.id);
+    if (mi >= 0) board.members[mi] = m;
+    else board.members.push(m);
+  } else {
+    return NO_CHANGE;
+  }
+  const next = boards.slice();
+  next[idx] = board;
+  return { boards: next };
+}
+
+function mergeTaskRow(boards: Board[], c: RemoteChange) {
+  const boardId = (c.new?.board_id ?? c.old?.board_id) as string | undefined;
+  const idx = findBoardIdx(boards, boardId);
+  if (idx < 0) return NO_CHANGE;
+  const board = { ...boards[idx], tasks: boards[idx].tasks.slice() };
+  if (c.eventType === "DELETE") {
+    const tid = c.old?.id as string | undefined;
+    if (!tid) return NO_CHANGE;
+    board.tasks = board.tasks.filter((t) => t.id !== tid);
+  } else if (c.new) {
+    const r = c.new;
+    const existingIdx = board.tasks.findIndex((t) => t.id === r.id);
+    const incomingUpdated = (r.updated_at as string) ?? "";
+    if (
+      existingIdx >= 0 &&
+      incomingUpdated &&
+      incomingUpdated < board.tasks[existingIdx].updatedAt
+    ) {
+      return NO_CHANGE; // stale echo / older write
+    }
+    const merged: Task = {
+      id: r.id as string,
+      title: (r.title as string) ?? "",
+      description: (r.description as string | null) ?? undefined,
+      status: (r.status as Task["status"]) ?? "not_started",
+      priority: (r.priority as Task["priority"]) ?? "medium",
+      // task_assignees has its own subscription; preserve current value.
+      assigneeIds:
+        existingIdx >= 0 ? board.tasks[existingIdx].assigneeIds : [],
+      startDate: (r.start_date as string | null) ?? undefined,
+      dueDate: (r.due_date as string | null) ?? undefined,
+      tags: (r.tags as string[] | null) ?? [],
+      groupId: r.group_id as string,
+      createdAt: (r.created_at as string) ?? new Date().toISOString(),
+      updatedAt: incomingUpdated || new Date().toISOString(),
+    };
+    if (existingIdx >= 0) board.tasks[existingIdx] = merged;
+    else board.tasks.push(merged);
+  } else {
+    return NO_CHANGE;
+  }
+  const next = boards.slice();
+  next[idx] = board;
+  return { boards: next };
+}
+
+function mergeAssigneeRow(boards: Board[], c: RemoteChange) {
+  const taskId = (c.new?.task_id ?? c.old?.task_id) as string | undefined;
+  const memberId = (c.new?.member_id ?? c.old?.member_id) as
+    | string
+    | undefined;
+  if (!taskId || !memberId) return NO_CHANGE;
+  let bi = -1;
+  let ti = -1;
+  for (let i = 0; i < boards.length; i++) {
+    const idx = boards[i].tasks.findIndex((t) => t.id === taskId);
+    if (idx >= 0) {
+      bi = i;
+      ti = idx;
+      break;
+    }
+  }
+  if (bi < 0) return NO_CHANGE;
+  const board = { ...boards[bi], tasks: boards[bi].tasks.slice() };
+  const task = { ...board.tasks[ti] };
+  if (c.eventType === "DELETE") {
+    task.assigneeIds = task.assigneeIds.filter((id) => id !== memberId);
+  } else if (c.eventType === "INSERT") {
+    if (!task.assigneeIds.includes(memberId)) {
+      task.assigneeIds = [...task.assigneeIds, memberId];
+    }
+  } else {
+    return NO_CHANGE;
+  }
+  board.tasks[ti] = task;
+  const next = boards.slice();
+  next[bi] = board;
+  return { boards: next };
+}
