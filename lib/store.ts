@@ -73,6 +73,9 @@ interface Actions {
     memberId: string,
     role: Member["role"],
   ) => void;
+
+  enableSharing: (boardId: string) => string | null;
+  disableSharing: (boardId: string) => void;
 }
 
 function nowIso() {
@@ -613,6 +616,34 @@ export const useStore = create<State & Actions>()(
             }
           })(),
         );
+      },
+
+      enableSharing: (boardId) => {
+        const board = get().boards.find((b) => b.id === boardId);
+        if (!board) return null;
+        const token = board.shareToken ?? nanoid(16);
+        let touched: Board | undefined;
+        set((s) => ({
+          boards: s.boards.map((b) =>
+            b.id !== boardId
+              ? b
+              : (touched = { ...b, shareToken: token, updatedAt: nowIso() }),
+          ),
+        }));
+        if (touched) fnf(upsertBoard(touched));
+        return token;
+      },
+
+      disableSharing: (boardId) => {
+        let touched: Board | undefined;
+        set((s) => ({
+          boards: s.boards.map((b) =>
+            b.id !== boardId
+              ? b
+              : (touched = { ...b, shareToken: null, updatedAt: nowIso() }),
+          ),
+        }));
+        if (touched) fnf(upsertBoard(touched));
       },
 
       updateMemberRole: (boardId, memberId, role) => {

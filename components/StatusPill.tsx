@@ -8,9 +8,10 @@ interface Props {
   value: StatusKey;
   onChange: (next: StatusKey) => void;
   size?: "sm" | "md";
+  disabled?: boolean;
 }
 
-export function StatusPill({ value, onChange, size = "sm" }: Props) {
+export function StatusPill({ value, onChange, size = "sm", disabled }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const current = STATUSES.find((s) => s.key === value) ?? STATUSES[0];
@@ -27,7 +28,9 @@ export function StatusPill({ value, onChange, size = "sm" }: Props) {
     <div ref={ref} className="relative inline-block">
       <button
         type="button"
+        disabled={disabled}
         onClick={(e) => {
+          if (disabled) return;
           e.stopPropagation();
           setOpen((v) => !v);
         }}
@@ -35,6 +38,7 @@ export function StatusPill({ value, onChange, size = "sm" }: Props) {
         className={cn(
           "rounded-md font-semibold text-white whitespace-nowrap shadow-sm",
           size === "sm" ? "px-2 py-0.5 text-xs" : "px-3 py-1 text-sm",
+          disabled && "cursor-default",
         )}
       >
         {current.label}

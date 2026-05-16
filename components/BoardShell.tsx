@@ -6,14 +6,16 @@ import {
   ArrowLeft,
   Calendar,
   ChevronDown,
+  Eye,
   LayoutGrid,
   Plus,
   Search,
+  Share2,
   Table as TableIcon,
   UserPlus,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
-import type { Task, ViewType } from "@/lib/types";
+import type { Board, Task, ViewType } from "@/lib/types";
 import { BOARD_EMOJIS, STATUSES } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { AvatarStack } from "./Avatar";
@@ -22,16 +24,25 @@ import { TableView } from "./TableView";
 import { TimelineView } from "./TimelineView";
 import { TaskModal } from "./TaskModal";
 import { InviteMembersModal } from "./InviteMembersModal";
+import { ShareModal } from "./ShareModal";
 import { SyncBanner } from "./SyncBanner";
+import { BoardProvider } from "./BoardContext";
 
 interface Props {
   boardId: string;
+  /** When provided, render this board directly (skip the store lookup). */
+  board?: Board;
+  /** Read-only mode disables every mutation in the UI. */
+  readOnly?: boolean;
 }
 
-export function BoardShell({ boardId }: Props) {
+export function BoardShell({ boardId, board: boardOverride, readOnly = false }: Props) {
   const hydrated = useStore((s) => s.hydrated);
   const setHydrated = useStore((s) => s.setHydrated);
-  const board = useStore((s) => s.boards.find((b) => b.id === boardId));
+  const boardFromStore = useStore((s) =>
+    s.boards.find((b) => b.id === boardId),
+  );
+  const board = boardOverride ?? boardFromStore;
   const setView = useStore((s) => s.setView);
   const renameBoard = useStore((s) => s.renameBoard);
   const updateEmoji = useStore((s) => s.updateBoardEmoji);
@@ -39,15 +50,19 @@ export function BoardShell({ boardId }: Props) {
 
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [showInvite, setShowInvite] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
   const [titleDraft, setTitleDraft] = useState("");
+  const [localView, setLocalView] = useState<ViewType | null>(null);
 
   useEffect(() => {
+    // No need to load the whole boards list in read-only / share mode.
+    if (boardOverride) return;
     void setHydrated();
-  }, [setHydrated]);
+  }, [setHydrated, boardOverride]);
 
   useEffect(() => {
     if (board) setTitleDraft(board.name);
@@ -73,7 +88,7 @@ export function BoardShell({ boardId }: Props) {
     };
   }, [search, statusFilter, assigneeFilter]);
 
-  if (!hydrated) {
+  if (!boardOverride && !hydrated) {
     return (
       <div className="flex h-screen items-center justify-center text-slate-400">
         Loading…
@@ -100,26 +115,36 @@ export function BoardShell({ boardId }: Props) {
   const progress = total === 0 ? 0 : Math.round((done / total) * 100);
 
   return (
+    <BoardProvider value={{ readOnly }}>
     <div className="flex min-h-screen flex-col">
       <SyncBanner />
+      {readOnly && (
+        <div className="border-b border-brand-200 bg-brand-50 px-4 py-1.5 text-center text-xs text-brand-800">
+          <Eye className="mr-1 inline h-3 w-3" />
+          You're viewing a shared board in read-only mode.
+        </div>
+      )}
       <header className="border-b bg-white">
         <div className="flex items-center gap-3 px-6 py-3">
-          <Link
-            href="/"
-            className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-            aria-label="Back"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
+          {!readOnly && (
+            <Link
+              href="/"
+              className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+              aria-label="Back"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          )}
           <div className="relative">
             <button
-              onClick={() => setShowEmoji((v) => !v)}
-              className="grid h-9 w-9 place-items-center rounded-lg bg-slate-100 text-xl hover:bg-slate-200"
+              onClick={() => !readOnly && setShowEmoji((v) => !v)}
+              disabled={readOnly}
+              className="grid h-9 w-9 place-items-center rounded-lg bg-slate-100 text-xl hover:bg-slate-200 disabled:hover:bg-slate-100"
               aria-label="Change emoji"
             >
               {board.emoji}
             </button>
-            {showEmoji && (
+            {showEmoji && !readOnly && (
               <div className="absolute left-0 top-full z-40 mt-1 grid grid-cols-6 gap-1 rounded-md border bg-white p-2 shadow-lg">
                 {BOARD_EMOJIS.map((e) => (
                   <button
@@ -139,7 +164,9 @@ export function BoardShell({ boardId }: Props) {
           <input
             value={titleDraft}
             onChange={(e) => setTitleDraft(e.target.value)}
+            readOnly={readOnly}
             onBlur={() => {
+              if (readOnly) return;
               const v = titleDraft.trim();
               if (v && v !== board.name) renameBoard(board.id, v);
               else setTitleDraft(board.name);
@@ -151,12 +178,28 @@ export function BoardShell({ boardId }: Props) {
           />
           <div className="ml-2 hidden items-center gap-3 sm:flex">
             <AvatarStack members={board.members} max={4} size="sm" />
-            <button
-              onClick={() => setShowInvite(true)}
-              className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-            >
-              <UserPlus className="h-3.5 w-3.5" /> Invite
-            </button>
+            {!readOnly && (
+              <>
+                <button
+                  onClick={() => setShowInvite(true)}
+                  className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  <UserPlus className="h-3.5 w-3.5" /> Invite
+                </button>
+                <button
+                  onClick={() => setShowShare(true)}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium hover:bg-slate-50",
+                    board.shareToken
+                      ? "border-brand-300 text-brand-700"
+                      : "text-slate-700",
+                  )}
+                >
+                  <Share2 className="h-3.5 w-3.5" />
+                  {board.shareToken ? "Sharing" : "Share"}
+                </button>
+              </>
+            )}
           </div>
           <div className="ml-auto flex items-center gap-3">
             <div className="hidden items-center gap-2 sm:flex">
@@ -175,8 +218,11 @@ export function BoardShell({ boardId }: Props) {
 
         <div className="flex flex-wrap items-center gap-2 border-t bg-slate-50 px-6 py-2">
           <ViewSwitch
-            value={board.view}
-            onChange={(v) => setView(board.id, v)}
+            value={readOnly ? localView ?? board.view : board.view}
+            onChange={(v) => {
+              if (readOnly) setLocalView(v);
+              else setView(board.id, v);
+            }}
           />
           <div className="relative">
             <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
@@ -203,42 +249,31 @@ export function BoardShell({ boardId }: Props) {
               ...board.members.map((m) => ({ value: m.id, label: m.name })),
             ]}
           />
-          <div className="ml-auto flex items-center gap-1">
-            <button
-              onClick={() => {
-                const name = prompt("New group name");
-                if (name?.trim()) addGroup(board.id, name.trim());
-              }}
-              className="inline-flex items-center gap-1 rounded-md bg-brand-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-700"
-            >
-              <Plus className="h-3.5 w-3.5" /> Add group
-            </button>
-          </div>
+          {!readOnly && (
+            <div className="ml-auto flex items-center gap-1">
+              <button
+                onClick={() => {
+                  const name = prompt("New group name");
+                  if (name?.trim()) addGroup(board.id, name.trim());
+                }}
+                className="inline-flex items-center gap-1 rounded-md bg-brand-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-700"
+              >
+                <Plus className="h-3.5 w-3.5" /> Add group
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
       <main className="flex-1 overflow-y-auto bg-slate-50">
-        {board.view === "kanban" && (
-          <KanbanView
-            board={board}
-            onOpenTask={setOpenTaskId}
-            filter={filter}
-          />
-        )}
-        {board.view === "table" && (
-          <TableView
-            board={board}
-            onOpenTask={setOpenTaskId}
-            filter={filter}
-          />
-        )}
-        {board.view === "timeline" && (
-          <TimelineView
-            board={board}
-            onOpenTask={setOpenTaskId}
-            filter={filter}
-          />
-        )}
+        {(() => {
+          const activeView = readOnly ? localView ?? board.view : board.view;
+          if (activeView === "kanban")
+            return <KanbanView board={board} onOpenTask={setOpenTaskId} filter={filter} />;
+          if (activeView === "table")
+            return <TableView board={board} onOpenTask={setOpenTaskId} filter={filter} />;
+          return <TimelineView board={board} onOpenTask={setOpenTaskId} filter={filter} />;
+        })()}
       </main>
 
       <TaskModal
@@ -246,12 +281,22 @@ export function BoardShell({ boardId }: Props) {
         taskId={openTaskId}
         onClose={() => setOpenTaskId(null)}
       />
-      <InviteMembersModal
-        board={board}
-        open={showInvite}
-        onClose={() => setShowInvite(false)}
-      />
+      {!readOnly && (
+        <>
+          <InviteMembersModal
+            board={board}
+            open={showInvite}
+            onClose={() => setShowInvite(false)}
+          />
+          <ShareModal
+            board={board}
+            open={showShare}
+            onClose={() => setShowShare(false)}
+          />
+        </>
+      )}
     </div>
+    </BoardProvider>
   );
 }
 

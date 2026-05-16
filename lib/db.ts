@@ -9,6 +9,7 @@ interface BoardRow {
   description: string | null;
   emoji: string | null;
   view: string;
+  share_token: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -54,7 +55,7 @@ export async function fetchAllBoards(): Promise<Board[] | null> {
   const { data, error } = await sb
     .from("boards")
     .select(
-      `id, name, description, emoji, view, created_at, updated_at,
+      `id, name, description, emoji, view, share_token, created_at, updated_at,
        board_groups (id, board_id, name, color, collapsed, position),
        board_members (id, board_id, name, email, avatar_color, role),
        tasks (id, board_id, group_id, title, description, status, priority,
@@ -113,9 +114,41 @@ function rowToBoard(b: BoardRow & {
     groups,
     tasks,
     members,
+    shareToken: b.share_token ?? null,
     createdAt: b.created_at,
     updatedAt: b.updated_at,
   };
+}
+
+export async function fetchBoardByToken(
+  token: string,
+): Promise<Board | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data, error } = await sb
+    .from("boards")
+    .select(
+      `id, name, description, emoji, view, share_token, created_at, updated_at,
+       board_groups (id, board_id, name, color, collapsed, position),
+       board_members (id, board_id, name, email, avatar_color, role),
+       tasks (id, board_id, group_id, title, description, status, priority,
+              start_date, due_date, tags, created_at, updated_at,
+              task_assignees (member_id))`,
+    )
+    .eq("share_token", token)
+    .maybeSingle();
+  if (error) {
+    logErr("fetchBoardByToken", error);
+    return null;
+  }
+  if (!data) return null;
+  return rowToBoard(
+    data as BoardRow & {
+      board_groups: GroupRow[];
+      board_members: MemberRow[];
+      tasks: TaskRow[];
+    },
+  );
 }
 
 export async function upsertBoard(board: Board) {
@@ -127,6 +160,7 @@ export async function upsertBoard(board: Board) {
     description: board.description ?? null,
     emoji: board.emoji,
     view: board.view,
+    share_token: board.shareToken ?? null,
     created_at: board.createdAt,
     updated_at: board.updatedAt,
   });

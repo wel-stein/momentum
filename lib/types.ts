@@ -70,6 +70,7 @@ export interface Board {
   groups: Group[];
   tasks: Task[];
   members: Member[];
+  shareToken?: string | null;
   createdAt: string;
   updatedAt: string;
 }

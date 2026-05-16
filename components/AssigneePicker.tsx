@@ -9,9 +9,15 @@ interface Props {
   members: Member[];
   selected: string[];
   onChange: (next: string[]) => void;
+  disabled?: boolean;
 }
 
-export function AssigneePicker({ members, selected, onChange }: Props) {
+export function AssigneePicker({
+  members,
+  selected,
+  onChange,
+  disabled,
+}: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const chosen = members.filter((m) => selected.includes(m.id));
@@ -33,14 +39,22 @@ export function AssigneePicker({ members, selected, onChange }: Props) {
     <div ref={ref} className="relative inline-block">
       <button
         type="button"
+        disabled={disabled}
         onClick={(e) => {
+          if (disabled) return;
           e.stopPropagation();
           setOpen((v) => !v);
         }}
-        className="inline-flex items-center gap-1 rounded-md border border-dashed border-slate-300 px-1.5 py-0.5 hover:border-slate-400"
+        className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 ${
+          disabled
+            ? "border-transparent cursor-default"
+            : "border-dashed border-slate-300 hover:border-slate-400"
+        }`}
       >
         {chosen.length > 0 ? (
           <AvatarStack members={chosen} max={3} size="xs" />
+        ) : disabled ? (
+          <span className="px-1 text-xs text-slate-400">—</span>
         ) : (
           <span className="flex items-center gap-1 text-xs text-slate-500">
             <Plus className="h-3 w-3" /> Assign

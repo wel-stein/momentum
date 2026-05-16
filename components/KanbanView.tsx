@@ -19,6 +19,7 @@ import { useStore } from "@/lib/store";
 import { cn, formatDate, isOverdue } from "@/lib/utils";
 import { AvatarStack } from "./Avatar";
 import { PRIORITY_META } from "@/lib/types";
+import { useReadOnly } from "./BoardContext";
 
 interface Props {
   board: Board;
@@ -27,6 +28,7 @@ interface Props {
 }
 
 export function KanbanView({ board, onOpenTask, filter }: Props) {
+  const readOnly = useReadOnly();
   const moveTask = useStore((s) => s.moveTask);
   const addTask = useStore((s) => s.addTask);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -35,10 +37,12 @@ export function KanbanView({ board, onOpenTask, filter }: Props) {
   );
 
   const onDragStart = (e: DragStartEvent) => {
+    if (readOnly) return;
     setActiveId(String(e.active.id));
   };
   const onDragEnd = (e: DragEndEvent) => {
     setActiveId(null);
+    if (readOnly) return;
     if (!e.over) return;
     const taskId = String(e.active.id);
     const [groupId, status] = String(e.over.id).split("::");
@@ -85,7 +89,11 @@ export function KanbanView({ board, onOpenTask, filter }: Props) {
                     label={s.label}
                     color={s.color}
                     count={tasksHere.length}
-                    onAdd={() => addTask(board.id, g.id, "New task")}
+                    onAdd={
+                      readOnly
+                        ? undefined
+                        : () => addTask(board.id, g.id, "New task")
+                    }
                   >
                     {tasksHere.map((t) => (
                       <Card
@@ -93,6 +101,7 @@ export function KanbanView({ board, onOpenTask, filter }: Props) {
                         task={t}
                         members={board.members}
                         onOpen={() => onOpenTask(t.id)}
+                        readOnly={readOnly}
                       />
                     ))}
                   </Column>
@@ -125,7 +134,7 @@ function Column({
   label: string;
   color: string;
   count: number;
-  onAdd: () => void;
+  onAdd?: () => void;
   children: React.ReactNode;
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: droppableId });
@@ -150,13 +159,15 @@ function Column({
             {count}
           </span>
         </div>
-        <button
-          onClick={onAdd}
-          aria-label="Add task"
-          className="rounded p-1 text-slate-400 hover:bg-white hover:text-slate-700"
-        >
-          <Plus className="h-3.5 w-3.5" />
-        </button>
+        {onAdd && (
+          <button
+            onClick={onAdd}
+            aria-label="Add task"
+            className="rounded p-1 text-slate-400 hover:bg-white hover:text-slate-700"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
       <div className="flex min-h-[60px] flex-col gap-2">{children}</div>
     </div>
@@ -167,22 +178,24 @@ function Card({
   task,
   members,
   onOpen,
+  readOnly,
 }: {
   task: Task;
   members: Board["members"];
   onOpen: () => void;
+  readOnly: boolean;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: task.id,
+    disabled: readOnly,
   });
   return (
     <div
       ref={setNodeRef}
-      {...listeners}
-      {...attributes}
+      {...(readOnly ? {} : { ...listeners, ...attributes })}
       onClick={onOpen}
       className={cn(
-        "cursor-grab active:cursor-grabbing",
+        readOnly ? "cursor-pointer" : "cursor-grab active:cursor-grabbing",
         isDragging && "opacity-30",
       )}
     >

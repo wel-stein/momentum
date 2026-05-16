@@ -8,6 +8,7 @@ import { cn, formatDate, isOverdue } from "@/lib/utils";
 import { StatusPill } from "./StatusPill";
 import { PriorityPill } from "./PriorityPill";
 import { AssigneePicker } from "./AssigneePicker";
+import { useReadOnly } from "./BoardContext";
 
 interface Props {
   board: Board;
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function TableView({ board, onOpenTask, filter }: Props) {
+  const readOnly = useReadOnly();
   const updateTask = useStore((s) => s.updateTask);
   const addTask = useStore((s) => s.addTask);
   const deleteTask = useStore((s) => s.deleteTask);
@@ -39,8 +41,12 @@ export function TableView({ board, onOpenTask, filter }: Props) {
               className="flex items-center gap-2 border-l-4 px-3 py-2"
             >
               <button
-                onClick={() => toggleCollapsed(board.id, g.id)}
-                className="rounded p-0.5 text-slate-500 hover:bg-slate-100"
+                onClick={() => {
+                  if (readOnly) return;
+                  toggleCollapsed(board.id, g.id);
+                }}
+                disabled={readOnly}
+                className="rounded p-0.5 text-slate-500 hover:bg-slate-100 disabled:hover:bg-transparent"
                 aria-label="Toggle group"
               >
                 {g.collapsed ? (
@@ -52,34 +58,37 @@ export function TableView({ board, onOpenTask, filter }: Props) {
               <input
                 value={g.name}
                 onChange={(e) => renameGroup(board.id, g.id, e.target.value)}
+                readOnly={readOnly}
                 className="border-0 bg-transparent px-1 py-0.5 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-brand-200"
                 style={{ color: g.color }}
               />
               <span className="text-xs text-slate-400">
                 {tasks.length} task{tasks.length === 1 ? "" : "s"}
               </span>
-              <div className="ml-auto flex items-center gap-1">
-                <button
-                  onClick={() => addTask(board.id, g.id, "New task")}
-                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
-                >
-                  <Plus className="h-3.5 w-3.5" /> Add task
-                </button>
-                <button
-                  onClick={() => {
-                    if (
-                      confirm(
-                        `Delete group "${g.name}"? Tasks inside will be removed.`,
+              {!readOnly && (
+                <div className="ml-auto flex items-center gap-1">
+                  <button
+                    onClick={() => addTask(board.id, g.id, "New task")}
+                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Add task
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (
+                        confirm(
+                          `Delete group "${g.name}"? Tasks inside will be removed.`,
+                        )
                       )
-                    )
-                      deleteGroup(board.id, g.id);
-                  }}
-                  aria-label="Delete group"
-                  className="rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
+                        deleteGroup(board.id, g.id);
+                    }}
+                    aria-label="Delete group"
+                    className="rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
             </header>
             {!g.collapsed && (
               <div className="overflow-x-auto">
@@ -111,18 +120,21 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                         key={t.id}
                         task={t}
                         board={board}
+                        readOnly={readOnly}
                         onOpen={() => onOpenTask(t.id)}
                         onTitle={(v) => updateTask(board.id, t.id, { title: v })}
                         onDelete={() => deleteTask(board.id, t.id)}
                       />
                     ))}
-                    <tr>
-                      <td colSpan={7} className="px-3 py-1">
-                        <AddRow
-                          onAdd={(title) => addTask(board.id, g.id, title)}
-                        />
-                      </td>
-                    </tr>
+                    {!readOnly && (
+                      <tr>
+                        <td colSpan={7} className="px-3 py-1">
+                          <AddRow
+                            onAdd={(title) => addTask(board.id, g.id, title)}
+                          />
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -156,12 +168,14 @@ function Th({
 function Row({
   task,
   board,
+  readOnly,
   onOpen,
   onTitle,
   onDelete,
 }: {
   task: Task;
   board: Board;
+  readOnly: boolean;
   onOpen: () => void;
   onTitle: (v: string) => void;
   onDelete: () => void;
@@ -192,15 +206,21 @@ function Row({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={() => {
+              if (readOnly) return;
               if (title.trim() && title !== task.title) onTitle(title.trim());
               else setTitle(task.title);
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter") (e.target as HTMLInputElement).blur();
             }}
+            readOnly={readOnly}
             placeholder="Untitled task"
             title={task.title}
-            className="w-full truncate rounded border border-transparent bg-transparent px-1.5 py-1 text-sm font-medium text-slate-900 placeholder:font-normal placeholder:text-slate-400 hover:border-slate-200 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100"
+            className={cn(
+              "w-full truncate rounded border border-transparent bg-transparent px-1.5 py-1 text-sm font-medium text-slate-900 placeholder:font-normal placeholder:text-slate-400",
+              !readOnly &&
+                "hover:border-slate-200 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100",
+            )}
           />
           <button
             onClick={onOpen}
@@ -215,6 +235,7 @@ function Row({
         <AssigneePicker
           members={board.members}
           selected={task.assigneeIds}
+          disabled={readOnly}
           onChange={(ids) =>
             updateTask(board.id, task.id, { assigneeIds: ids })
           }
@@ -223,12 +244,14 @@ function Row({
       <td className="px-3 py-1.5">
         <StatusPill
           value={task.status}
+          disabled={readOnly}
           onChange={(v) => updateTask(board.id, task.id, { status: v })}
         />
       </td>
       <td className="px-3 py-1.5">
         <PriorityPill
           value={task.priority}
+          disabled={readOnly}
           onChange={(v) => updateTask(board.id, task.id, { priority: v })}
         />
       </td>
@@ -236,6 +259,7 @@ function Row({
         <input
           type="date"
           value={task.dueDate ? task.dueDate.slice(0, 10) : ""}
+          readOnly={readOnly}
           onChange={(e) =>
             updateTask(board.id, task.id, {
               dueDate: e.target.value
@@ -267,15 +291,17 @@ function Row({
         </div>
       </td>
       <td className="px-3 py-1.5 text-right">
-        <button
-          onClick={() => {
-            if (confirm("Delete this task?")) onDelete();
-          }}
-          aria-label="Delete task"
-          className="rounded p-1 text-slate-300 hover:bg-rose-50 hover:text-rose-600 group-hover:text-slate-500"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+        {!readOnly && (
+          <button
+            onClick={() => {
+              if (confirm("Delete this task?")) onDelete();
+            }}
+            aria-label="Delete task"
+            className="rounded p-1 text-slate-300 hover:bg-rose-50 hover:text-rose-600 group-hover:text-slate-500"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
       </td>
     </tr>
   );

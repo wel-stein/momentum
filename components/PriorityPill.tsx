@@ -8,11 +8,12 @@ interface Props {
   value: Priority;
   onChange: (next: Priority) => void;
   size?: "sm" | "md";
+  disabled?: boolean;
 }
 
 const ORDER: Priority[] = ["low", "medium", "high", "critical"];
 
-export function PriorityPill({ value, onChange, size = "sm" }: Props) {
+export function PriorityPill({ value, onChange, size = "sm", disabled }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const meta = PRIORITY_META[value];
@@ -29,13 +30,16 @@ export function PriorityPill({ value, onChange, size = "sm" }: Props) {
     <div ref={ref} className="relative inline-block">
       <button
         type="button"
+        disabled={disabled}
         onClick={(e) => {
+          if (disabled) return;
           e.stopPropagation();
           setOpen((v) => !v);
         }}
         className={cn(
           "inline-flex items-center gap-1 rounded-md font-medium whitespace-nowrap border",
           size === "sm" ? "px-2 py-0.5 text-xs" : "px-3 py-1 text-sm",
+          disabled && "cursor-default",
         )}
         style={{ color: meta.color, borderColor: meta.color + "55" }}
       >
