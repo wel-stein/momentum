@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronDown, ChevronRight, ExternalLink, Plus, Trash2 } from "lucide-react";
 import type { Board, Task } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { cn, formatDate, isOverdue } from "@/lib/utils";
@@ -170,10 +170,24 @@ function Row({
   const overdue = isOverdue(task.dueDate);
   const [title, setTitle] = useState(task.title);
 
+  // Sync local input when the task is renamed elsewhere (e.g. the modal).
+  useEffect(() => {
+    setTitle(task.title);
+  }, [task.title]);
+
   return (
     <tr className="group hover:bg-slate-50">
       <td className="px-3 py-1.5">
         <div className="flex items-center gap-2">
+          <span
+            className="grid h-5 w-1 shrink-0 rounded-sm"
+            style={{
+              backgroundColor:
+                board.groups.find((g) => g.id === task.groupId)?.color ??
+                "#cbd5e1",
+            }}
+            aria-hidden
+          />
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -184,13 +198,16 @@ function Row({
             onKeyDown={(e) => {
               if (e.key === "Enter") (e.target as HTMLInputElement).blur();
             }}
-            className="w-full rounded border-0 bg-transparent px-1 py-0.5 text-sm focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-300"
+            placeholder="Untitled task"
+            title={task.title}
+            className="w-full truncate rounded border border-transparent bg-transparent px-1.5 py-1 text-sm font-medium text-slate-900 placeholder:font-normal placeholder:text-slate-400 hover:border-slate-200 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100"
           />
           <button
             onClick={onOpen}
-            className="rounded px-1.5 py-0.5 text-[11px] font-medium text-brand-600 opacity-0 transition group-hover:opacity-100 hover:bg-brand-50"
+            aria-label="Open task details"
+            className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-slate-500 opacity-0 transition group-hover:opacity-100 hover:bg-brand-50 hover:text-brand-600"
           >
-            Open
+            <ExternalLink className="h-3 w-3" /> Open
           </button>
         </div>
       </td>
