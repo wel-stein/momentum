@@ -34,16 +34,16 @@ export function TableView({ board, onOpenTask, filter }: Props) {
         return (
           <section
             key={g.id}
-            className="overflow-hidden rounded-md border border-white/[0.07]"
+            className="overflow-hidden rounded-md border border-line"
           >
-            <header className="flex items-center gap-1.5 border-b border-white/[0.06] bg-white/[0.02] px-2 py-1.5">
+            <header className="flex items-center gap-1.5 border-b border-line bg-subtle px-2 py-1.5">
               <button
                 onClick={() => {
                   if (readOnly) return;
                   toggleCollapsed(board.id, g.id);
                 }}
                 disabled={readOnly}
-                className="rounded p-0.5 text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200 disabled:hover:bg-transparent"
+                className="rounded p-0.5 text-fg-subtle hover:bg-hover hover:text-fg disabled:hover:bg-transparent"
                 aria-label="Toggle group"
               >
                 {g.collapsed ? (
@@ -60,16 +60,16 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                 value={g.name}
                 onChange={(e) => renameGroup(board.id, g.id, e.target.value)}
                 readOnly={readOnly}
-                className="border-0 bg-transparent px-0.5 py-0.5 text-[13px] font-medium tracking-tight text-zinc-100 focus:outline-none focus:ring-1 focus:ring-brand-500/40"
+                className="border-0 bg-transparent px-0.5 py-0.5 text-[13px] font-medium tracking-tight text-fg focus:outline-none focus:ring-1 focus:ring-brand-500/40"
               />
-              <span className="font-mono text-[10px] text-zinc-500">
+              <span className="font-mono text-[10px] text-fg-subtle">
                 {tasks.length}
               </span>
               {!readOnly && (
                 <div className="ml-auto flex items-center gap-0.5">
                   <button
                     onClick={() => addTask(board.id, g.id, "New task")}
-                    className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200"
+                    className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-fg-muted hover:bg-hover hover:text-fg"
                   >
                     <Plus className="h-3 w-3" /> Add task
                   </button>
@@ -83,7 +83,7 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                         deleteGroup(board.id, g.id);
                     }}
                     aria-label="Delete group"
-                    className="rounded p-1 text-zinc-500 hover:bg-rose-500/10 hover:text-rose-400"
+                    className="rounded p-1 text-fg-subtle hover:bg-rose-500/10 hover:text-rose-400"
                   >
                     <Trash2 className="h-3 w-3" />
                   </button>
@@ -93,9 +93,9 @@ export function TableView({ board, onOpenTask, filter }: Props) {
             {!g.collapsed && (
               <div className="overflow-x-auto">
                 <table className="min-w-full text-[13px]">
-                  <thead className="bg-white/[0.015] text-[10px] uppercase tracking-wider text-zinc-500">
-                    <tr className="border-b border-white/[0.06]">
-                      <Th className="w-[64px]">ID</Th>
+                  <thead className="bg-subtle text-[10px] uppercase tracking-wider text-fg-subtle">
+                    <tr className="border-b border-line">
+                      <Th className="w-[64px] whitespace-nowrap">ID</Th>
                       <Th className="w-[48%] min-w-[320px]">Task</Th>
                       <Th className="w-[96px]">Owners</Th>
                       <Th className="w-[140px]">Status</Th>
@@ -110,10 +110,10 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                       <tr>
                         <td
                           colSpan={8}
-                          className="px-4 py-4 text-center text-[11px] text-zinc-500"
+                          className="px-4 py-4 text-center text-[11px] text-fg-subtle"
                         >
                           No tasks. Press{" "}
-                          <span className="font-mono text-zinc-400">+ Add task</span>{" "}
+                          <span className="font-mono text-fg-muted">+ Add task</span>{" "}
                           to start.
                         </td>
                       </tr>
@@ -159,7 +159,7 @@ function Th({
   return (
     <th
       className={cn(
-        "px-3 py-1.5 text-left font-medium text-zinc-500",
+        "px-3 py-1.5 text-left font-medium text-fg-subtle",
         className,
       )}
     >
@@ -192,11 +192,11 @@ function Row({
   }, [task.title]);
 
   return (
-    <tr className="group h-9 border-b border-white/[0.04] hover:bg-white/[0.025]">
-      <td className="px-3">
+    <tr className="group h-9 border-b border-line hover:bg-hover">
+      <td className="whitespace-nowrap px-3">
         <button
           onClick={onOpen}
-          className="font-mono text-[11px] text-zinc-500 hover:text-zinc-300"
+          className="whitespace-nowrap font-mono text-[11px] text-fg-subtle hover:text-fg"
         >
           {taskCode(task.id)}
         </button>
@@ -217,9 +217,9 @@ function Row({
           placeholder="Untitled task"
           title={task.title}
           className={cn(
-            "w-full truncate rounded border border-transparent bg-transparent px-1 py-0.5 text-[13px] font-medium text-zinc-100 placeholder:font-normal placeholder:text-zinc-600",
+            "w-full truncate rounded border border-transparent bg-transparent px-1 py-0.5 text-[13px] font-medium text-fg placeholder:font-normal placeholder:text-fg-faint",
             !readOnly &&
-              "hover:border-white/[0.08] focus:border-brand-500/50 focus:bg-ink-900 focus:outline-none focus:ring-1 focus:ring-brand-500/30",
+              "hover:border-line focus:border-brand-500/50 focus:bg-surface focus:outline-none focus:ring-1 focus:ring-brand-500/30",
           )}
         />
       </td>
@@ -254,7 +254,7 @@ function Row({
               "text-[11px] tabular-nums",
               overdue && task.status !== "done"
                 ? "text-rose-400"
-                : "text-zinc-400",
+                : "text-fg-muted",
             )}
           >
             {formatDateSmart(task.dueDate) || "—"}
@@ -271,10 +271,10 @@ function Row({
               })
             }
             className={cn(
-              "rounded border-0 bg-transparent px-1 py-0.5 text-[11px] tabular-nums focus:bg-ink-900 focus:outline-none focus:ring-1 focus:ring-brand-500/30",
+              "rounded border-0 bg-transparent px-1 py-0.5 text-[11px] tabular-nums focus:bg-surface focus:outline-none focus:ring-1 focus:ring-brand-500/30",
               overdue && task.status !== "done"
                 ? "text-rose-400"
-                : "text-zinc-400",
+                : "text-fg-muted",
             )}
           />
         )}
@@ -284,13 +284,13 @@ function Row({
           {task.tags.slice(0, 3).map((t) => (
             <span
               key={t}
-              className="rounded bg-white/[0.05] px-1.5 py-0.5 font-mono text-[10px] text-zinc-400"
+              className="rounded bg-hover px-1.5 py-0.5 font-mono text-[10px] text-fg-muted"
             >
               {t}
             </span>
           ))}
           {task.tags.length > 3 && (
-            <span className="text-[10px] text-zinc-600">
+            <span className="text-[10px] text-fg-faint">
               +{task.tags.length - 3}
             </span>
           )}
@@ -303,7 +303,7 @@ function Row({
               if (confirm("Delete this task?")) onDelete();
             }}
             aria-label="Delete task"
-            className="rounded p-1 text-zinc-700 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-rose-500/10 hover:text-rose-400"
+            className="rounded p-1 text-fg-faint opacity-0 transition-opacity group-hover:opacity-100 hover:bg-rose-500/10 hover:text-rose-400"
           >
             <Trash2 className="h-3 w-3" />
           </button>
@@ -326,7 +326,7 @@ function AddRow({ onAdd }: { onAdd: (title: string) => void }) {
         }
       }}
       placeholder="+ Add task and press Enter"
-      className="w-full rounded border border-transparent bg-transparent px-2 py-1 text-[12px] text-zinc-500 placeholder:text-zinc-600 focus:border-brand-500/40 focus:bg-ink-900 focus:text-zinc-100 focus:outline-none"
+      className="w-full rounded border border-transparent bg-transparent px-2 py-1 text-[12px] text-fg-subtle placeholder:text-fg-faint focus:border-brand-500/40 focus:bg-surface focus:text-fg focus:outline-none"
     />
   );
 }

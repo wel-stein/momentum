@@ -60,7 +60,7 @@ export function ProfileShell() {
 
   if (!auth.ready || !user) {
     return (
-      <div className="flex h-screen items-center justify-center text-sm text-zinc-600">
+      <div className="flex h-screen items-center justify-center text-sm text-fg-faint">
         Loading…
       </div>
     );
@@ -69,11 +69,11 @@ export function ProfileShell() {
   return (
     <div className="min-h-screen">
       <SyncBanner />
-      <header className="border-b border-white/[0.06]">
+      <header className="border-b border-line">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-3">
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 rounded p-1 text-[12px] text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200"
+            className="inline-flex items-center gap-1.5 rounded p-1 text-[12px] text-fg-muted hover:bg-hover hover:text-fg"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Boards
           </Link>
@@ -82,11 +82,11 @@ export function ProfileShell() {
       </header>
 
       <main className="mx-auto max-w-3xl px-6 py-8">
-        <h1 className="mb-5 text-xl font-medium tracking-tight text-zinc-100">
+        <h1 className="mb-5 text-xl font-medium tracking-tight text-fg">
           Profile
         </h1>
 
-        <section className="rounded-md border border-white/[0.07] bg-ink-850 p-5">
+        <section className="rounded-md border border-line bg-surface p-5">
           <div className="flex items-start gap-4">
             <div className="shrink-0">
               <Avatar
@@ -100,13 +100,13 @@ export function ProfileShell() {
               />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[15px] font-medium text-zinc-100">
+              <div className="text-[15px] font-medium text-fg">
                 {user.name}
               </div>
-              <div className="mt-0.5 inline-flex items-center gap-1 text-[12px] text-zinc-500">
+              <div className="mt-0.5 inline-flex items-center gap-1 text-[12px] text-fg-subtle">
                 <Mail className="h-3 w-3" /> {user.email}
               </div>
-              <div className="mt-1 font-mono text-[10px] text-zinc-600">
+              <div className="mt-1 font-mono text-[10px] text-fg-faint">
                 uid · {user.id}
               </div>
             </div>
@@ -127,12 +127,12 @@ export function ProfileShell() {
           </div>
         </section>
 
-        <section className="mt-4 rounded-md border border-white/[0.07] bg-ink-850 p-5">
-          <h2 className="mb-3 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+        <section className="mt-4 rounded-md border border-line bg-surface p-5">
+          <h2 className="mb-3 text-[10px] font-medium uppercase tracking-wider text-fg-subtle">
             Boards you own
           </h2>
           {summary.ownedBoards.length === 0 ? (
-            <p className="text-[12px] text-zinc-500">
+            <p className="text-[12px] text-fg-subtle">
               You haven't created any boards yet.{" "}
               <Link
                 href="/"
@@ -142,7 +142,7 @@ export function ProfileShell() {
               </Link>
             </p>
           ) : (
-            <div className="divide-y divide-white/[0.05]">
+            <div className="divide-y divide-line">
               {summary.ownedBoards.map((b) => (
                 <BoardRow key={b.id} boardId={b.id} title={b.name} emoji={b.emoji} members={b.members} taskCount={b.tasks.length} doneCount={b.tasks.filter((t) => t.status === "done").length} owner />
               ))}
@@ -151,11 +151,11 @@ export function ProfileShell() {
         </section>
 
         {summary.memberBoards.length > 0 && (
-          <section className="mt-4 rounded-md border border-white/[0.07] bg-ink-850 p-5">
-            <h2 className="mb-3 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+          <section className="mt-4 rounded-md border border-line bg-surface p-5">
+            <h2 className="mb-3 text-[10px] font-medium uppercase tracking-wider text-fg-subtle">
               Joined boards
             </h2>
-            <div className="divide-y divide-white/[0.05]">
+            <div className="divide-y divide-line">
               {summary.memberBoards.map((b) => (
                 <BoardRow key={b.id} boardId={b.id} title={b.name} emoji={b.emoji} members={b.members} taskCount={b.tasks.length} doneCount={b.tasks.filter((t) => t.status === "done").length} />
               ))}
@@ -167,7 +167,7 @@ export function ProfileShell() {
           <h2 className="text-[10px] font-medium uppercase tracking-wider text-rose-300">
             Account
           </h2>
-          <p className="mt-1 text-[12px] text-zinc-500">
+          <p className="mt-1 text-[12px] text-fg-subtle">
             Signing out clears your local session.
           </p>
           <button
@@ -182,7 +182,7 @@ export function ProfileShell() {
         </section>
 
         {!hydrated && (
-          <div className="mt-3 text-[11px] text-zinc-600">
+          <div className="mt-3 text-[11px] text-fg-faint">
             Syncing your boards…
           </div>
         )}
@@ -201,15 +201,15 @@ function Stat({
   hint?: string;
 }) {
   return (
-    <div className="rounded border border-white/[0.06] bg-white/[0.015] px-3 py-2">
-      <div className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+    <div className="rounded border border-line bg-subtle px-3 py-2">
+      <div className="text-[10px] font-medium uppercase tracking-wider text-fg-subtle">
         {label}
       </div>
-      <div className="mt-0.5 text-xl font-medium tabular-nums text-zinc-100">
+      <div className="mt-0.5 text-xl font-medium tabular-nums text-fg">
         {value}
       </div>
       {hint && (
-        <div className="text-[10px] tabular-nums text-zinc-500">{hint}</div>
+        <div className="text-[10px] tabular-nums text-fg-subtle">{hint}</div>
       )}
     </div>
   );
@@ -235,14 +235,14 @@ function BoardRow({
   return (
     <Link
       href={`/board/${boardId}`}
-      className="flex items-center gap-3 py-2 transition-colors hover:bg-white/[0.025]"
+      className="flex items-center gap-3 py-2 transition-colors hover:bg-hover"
     >
-      <div className="grid h-7 w-7 shrink-0 place-items-center rounded bg-white/[0.05] text-base">
+      <div className="grid h-7 w-7 shrink-0 place-items-center rounded bg-hover text-base">
         {emoji}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <span className="truncate text-[13px] font-medium text-zinc-100">
+          <span className="truncate text-[13px] font-medium text-fg">
             {title}
           </span>
           {owner && (
@@ -250,11 +250,11 @@ function BoardRow({
               <Crown className="h-2.5 w-2.5" /> Owner
             </span>
           )}
-          <span className="font-mono text-[10px] text-zinc-600">
+          <span className="font-mono text-[10px] text-fg-faint">
             {taskCode(boardId)}
           </span>
         </div>
-        <div className="text-[11px] tabular-nums text-zinc-500">
+        <div className="text-[11px] tabular-nums text-fg-subtle">
           {doneCount} / {taskCount} done
         </div>
       </div>

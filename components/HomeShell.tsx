@@ -50,7 +50,7 @@ export function HomeShell() {
 
   if (!auth.ready || !hydrated) {
     return (
-      <div className="flex h-screen items-center justify-center text-zinc-600 text-sm">
+      <div className="flex h-screen items-center justify-center text-fg-faint text-sm">
         Loading…
       </div>
     );
@@ -59,16 +59,16 @@ export function HomeShell() {
   return (
     <div className="min-h-screen">
       <SyncBanner />
-      <header className="border-b border-white/[0.06]">
+      <header className="border-b border-line">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-2.5">
             <div className="grid h-6 w-6 place-items-center rounded bg-brand-500 text-white">
               <span className="text-[11px] font-bold tracking-tight">M</span>
             </div>
-            <div className="text-[13px] font-medium tracking-tight text-zinc-100">
+            <div className="text-[13px] font-medium tracking-tight text-fg">
               Momentum
             </div>
-            <span className="font-mono text-[10px] text-zinc-600">v0.1</span>
+            <span className="font-mono text-[10px] text-fg-faint">v0.1</span>
           </div>
           <div className="flex items-center gap-2">
             {user && (
@@ -78,7 +78,7 @@ export function HomeShell() {
               >
                 <Plus className="h-3 w-3" />
                 New board
-                <Kbd className="ml-1 border-white/20 bg-white/10 text-white/80">
+                <Kbd className="ml-1 border-line-strong bg-hover text-fg">
                   C
                 </Kbd>
               </button>
@@ -91,10 +91,10 @@ export function HomeShell() {
       <main className="mx-auto max-w-7xl px-6 py-8">
         <div className="mb-5 flex items-end justify-between">
           <div>
-            <h1 className="text-xl font-medium tracking-tight text-zinc-100">
+            <h1 className="text-xl font-medium tracking-tight text-fg">
               Your boards
             </h1>
-            <p className="mt-0.5 text-[12px] text-zinc-500">
+            <p className="mt-0.5 text-[12px] text-fg-subtle">
               {boards.length} board{boards.length === 1 ? "" : "s"}
             </p>
           </div>
@@ -114,25 +114,25 @@ export function HomeShell() {
               return (
                 <div
                   key={b.id}
-                  className="group relative overflow-hidden rounded-md border border-white/[0.07] bg-ink-850 transition-colors hover:border-white/[0.14]"
+                  className="group relative overflow-hidden rounded-md border border-line bg-surface transition-colors hover:border-line-strong"
                 >
                   <Link href={`/board/${b.id}`} className="block p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex min-w-0 items-start gap-2.5">
-                        <div className="grid h-7 w-7 shrink-0 place-items-center rounded bg-white/[0.05] text-base">
+                        <div className="grid h-7 w-7 shrink-0 place-items-center rounded bg-hover text-base">
                           {b.emoji}
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <span className="truncate text-[13px] font-medium tracking-tight text-zinc-100">
+                            <span className="truncate text-[13px] font-medium tracking-tight text-fg">
                               {b.name}
                             </span>
-                            <span className="font-mono text-[10px] text-zinc-600">
+                            <span className="font-mono text-[10px] text-fg-faint">
                               {taskCode(b.id)}
                             </span>
                           </div>
                           {b.description && (
-                            <div className="mt-0.5 line-clamp-1 text-[11px] text-zinc-500">
+                            <div className="mt-0.5 line-clamp-1 text-[11px] text-fg-subtle">
                               {b.description}
                             </div>
                           )}
@@ -140,19 +140,19 @@ export function HomeShell() {
                       </div>
                       <ViewIcon view={b.view} />
                     </div>
-                    <div className="mt-3 h-[3px] overflow-hidden rounded-full bg-white/[0.05]">
+                    <div className="mt-3 h-[3px] overflow-hidden rounded-full bg-hover">
                       <div
                         className="h-full bg-brand-500/70"
                         style={{ width: `${progress}%` }}
                       />
                     </div>
-                    <div className="mt-2 flex items-center justify-between text-[11px] text-zinc-500">
+                    <div className="mt-2 flex items-center justify-between text-[11px] text-fg-subtle">
                       <div className="tabular-nums">
                         {doneCount} / {taskCount} done
                       </div>
                       <AvatarStack members={b.members} max={3} size="xs" />
                     </div>
-                    <div className="mt-1 text-[10px] tabular-nums text-zinc-600">
+                    <div className="mt-1 text-[10px] tabular-nums text-fg-faint">
                       Updated {formatDateSmart(b.updatedAt)}
                     </div>
                   </Link>
@@ -167,7 +167,7 @@ export function HomeShell() {
                         }
                       }}
                       aria-label="Delete board"
-                      className="absolute right-2 top-2 hidden rounded p-1 text-zinc-600 hover:bg-rose-500/10 hover:text-rose-400 group-hover:block"
+                      className="absolute right-2 top-2 hidden rounded p-1 text-fg-faint hover:bg-rose-500/10 hover:text-rose-400 group-hover:block"
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -187,7 +187,7 @@ export function HomeShell() {
           <>
             <button
               onClick={() => setShowNew(false)}
-              className="rounded px-3 py-1 text-[12px] text-zinc-300 hover:bg-white/[0.06]"
+              className="rounded px-3 py-1 text-[12px] text-fg hover:bg-hover"
             >
               Cancel
             </button>
@@ -212,7 +212,7 @@ export function HomeShell() {
       >
         <div className="space-y-3">
           <label className="block">
-            <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+            <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-fg-subtle">
               Board name
             </div>
             <input
@@ -220,11 +220,11 @@ export function HomeShell() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Product launch"
-              className="w-full rounded border border-white/10 bg-ink-900 px-2.5 py-1.5 text-[13px] text-zinc-100 placeholder:text-zinc-600 focus:border-brand-500/40 focus:outline-none"
+              className="w-full rounded border border-line bg-surface px-2.5 py-1.5 text-[13px] text-fg placeholder:text-fg-faint focus:border-brand-500/40 focus:outline-none"
             />
           </label>
           <label className="block">
-            <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+            <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-fg-subtle">
               Description (optional)
             </div>
             <textarea
@@ -232,7 +232,7 @@ export function HomeShell() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What is this board about?"
-              className="w-full resize-none rounded border border-white/10 bg-ink-900 px-2.5 py-1.5 text-[13px] text-zinc-200 placeholder:text-zinc-600 focus:border-brand-500/40 focus:outline-none"
+              className="w-full resize-none rounded border border-line bg-surface px-2.5 py-1.5 text-[13px] text-fg placeholder:text-fg-faint focus:border-brand-500/40 focus:outline-none"
             />
           </label>
         </div>
@@ -248,7 +248,7 @@ function ViewIcon({ view }: { view: string }) {
     timeline: <Calendar className="h-3.5 w-3.5" />,
   };
   return (
-    <span className="grid h-6 w-6 place-items-center rounded bg-white/[0.04] text-zinc-500">
+    <span className="grid h-6 w-6 place-items-center rounded bg-hover text-fg-subtle">
       {map[view]}
     </span>
   );
@@ -256,11 +256,11 @@ function ViewIcon({ view }: { view: string }) {
 
 function EmptyState({ onCreate }: { onCreate?: () => void }) {
   return (
-    <div className="rounded-md border border-dashed border-white/[0.08] bg-white/[0.015] p-12 text-center">
-      <h2 className="text-[14px] font-medium tracking-tight text-zinc-200">
+    <div className="rounded-md border border-dashed border-line bg-subtle p-12 text-center">
+      <h2 className="text-[14px] font-medium tracking-tight text-fg">
         No boards yet
       </h2>
-      <p className="mt-1 text-[12px] text-zinc-500">
+      <p className="mt-1 text-[12px] text-fg-subtle">
         {onCreate
           ? "Create your first board to start tracking work."
           : "Sign in with Google to create your first board."}
@@ -271,7 +271,7 @@ function EmptyState({ onCreate }: { onCreate?: () => void }) {
           className="mt-4 inline-flex items-center gap-1.5 rounded bg-brand-500 px-2.5 py-1 text-[12px] font-medium text-white hover:bg-brand-400"
         >
           <Plus className="h-3 w-3" /> New board
-          <Kbd className="ml-1 border-white/20 bg-white/10 text-white/80">
+          <Kbd className="ml-1 border-line-strong bg-hover text-fg">
             C
           </Kbd>
         </button>

@@ -67,7 +67,7 @@ export function AvatarStack({
       {overflow > 0 && (
         <span
           className={cn(
-            "inline-flex items-center justify-center rounded-full bg-ink-750 text-zinc-300 font-semibold ring-2 ring-ink-850",
+            "inline-flex items-center justify-center rounded-full bg-hover text-fg font-semibold ring-2 ring-ink-850",
             SIZE[size],
           )}
         >

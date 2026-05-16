@@ -50,22 +50,22 @@ export function ShareModal({ board, open, onClose }: Props) {
       footer={
         <button
           onClick={onClose}
-          className="rounded bg-white/[0.06] px-3 py-1 text-[12px] font-medium text-zinc-200 hover:bg-white/[0.1]"
+          className="rounded bg-hover px-3 py-1 text-[12px] font-medium text-fg hover:bg-hover"
         >
           Done
         </button>
       }
     >
       <div className="space-y-3">
-        <div className="flex items-start gap-3 rounded border border-white/[0.08] bg-white/[0.02] p-3">
+        <div className="flex items-start gap-3 rounded border border-line bg-subtle p-3">
           <div className="grid h-7 w-7 shrink-0 place-items-center rounded bg-brand-500/15 text-brand-300">
             <Eye className="h-3.5 w-3.5" />
           </div>
           <div>
-            <div className="text-[13px] font-medium text-zinc-100">
+            <div className="text-[13px] font-medium text-fg">
               View-only link
             </div>
-            <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-500">
+            <p className="mt-0.5 text-[11px] leading-relaxed text-fg-subtle">
               Anyone with the link can see this board and its tasks. They
               cannot edit, add, or delete anything.
             </p>
@@ -75,12 +75,12 @@ export function ShareModal({ board, open, onClose }: Props) {
         {token ? (
           <>
             <div>
-              <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+              <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-fg-subtle">
                 Link
               </div>
               <div className="flex gap-2">
-                <div className="flex flex-1 items-center gap-2 truncate rounded border border-white/10 bg-ink-900 px-2.5 py-1.5 font-mono text-[11px] text-zinc-300">
-                  <Link2 className="h-3 w-3 shrink-0 text-zinc-500" />
+                <div className="flex flex-1 items-center gap-2 truncate rounded border border-line bg-surface px-2.5 py-1.5 font-mono text-[11px] text-fg">
+                  <Link2 className="h-3 w-3 shrink-0 text-fg-subtle" />
                   <span className="truncate" title={shareUrl}>
                     {shareUrl}
                   </span>

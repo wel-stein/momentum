@@ -72,7 +72,7 @@ export function TaskModal({ board, taskId, onClose }: Props) {
           )}
           <button
             onClick={onClose}
-            className="rounded bg-white/[0.06] px-3 py-1 text-[12px] font-medium text-zinc-200 hover:bg-white/[0.1]"
+            className="rounded bg-hover px-3 py-1 text-[12px] font-medium text-fg hover:bg-hover"
           >
             Close
           </button>
@@ -80,14 +80,14 @@ export function TaskModal({ board, taskId, onClose }: Props) {
       }
     >
       <div className="space-y-4">
-        <div className="flex items-center gap-2 text-[11px] tracking-tight text-zinc-500">
+        <div className="flex items-center gap-2 text-[11px] tracking-tight text-fg-subtle">
           <span className="font-mono">{taskCode(task.id)}</span>
         </div>
         <input
           value={task.title}
           onChange={(e) => patch({ title: e.target.value })}
           readOnly={readOnly}
-          className="w-full rounded border-0 bg-transparent px-0 text-lg font-medium tracking-tight text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-0"
+          className="w-full rounded border-0 bg-transparent px-0 text-lg font-medium tracking-tight text-fg placeholder:text-fg-faint focus:outline-none focus:ring-0"
           placeholder="Task title"
         />
 
@@ -100,7 +100,7 @@ export function TaskModal({ board, taskId, onClose }: Props) {
                 if (readOnly) return;
                 moveTask(board.id, task.id, e.target.value);
               }}
-              className="rounded border border-white/10 bg-ink-900 px-2 py-1 text-[12px] text-zinc-200 focus:border-brand-500/40 focus:outline-none disabled:opacity-60"
+              className="rounded border border-line bg-surface px-2 py-1 text-[12px] text-fg focus:border-brand-500/40 focus:outline-none disabled:opacity-60"
             >
               {board.groups.map((g) => (
                 <option key={g.id} value={g.id}>
@@ -145,7 +145,7 @@ export function TaskModal({ board, taskId, onClose }: Props) {
                     : undefined,
                 })
               }
-              className="rounded border border-white/10 bg-ink-900 px-2 py-1 text-[12px] tabular-nums text-zinc-200 focus:border-brand-500/40 focus:outline-none read-only:opacity-60"
+              className="rounded border border-line bg-surface px-2 py-1 text-[12px] tabular-nums text-fg focus:border-brand-500/40 focus:outline-none read-only:opacity-60"
             />
           </Field>
           <Field label="Due">
@@ -160,7 +160,7 @@ export function TaskModal({ board, taskId, onClose }: Props) {
                     : undefined,
                 })
               }
-              className="rounded border border-white/10 bg-ink-900 px-2 py-1 text-[12px] tabular-nums text-zinc-200 focus:border-brand-500/40 focus:outline-none read-only:opacity-60"
+              className="rounded border border-line bg-surface px-2 py-1 text-[12px] tabular-nums text-fg focus:border-brand-500/40 focus:outline-none read-only:opacity-60"
             />
           </Field>
           <Field label="Tags">
@@ -170,7 +170,7 @@ export function TaskModal({ board, taskId, onClose }: Props) {
                   {task.tags.map((t) => (
                     <span
                       key={t}
-                      className="inline-flex items-center gap-1 rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[10px] text-zinc-300"
+                      className="inline-flex items-center gap-1 rounded bg-hover px-1.5 py-0.5 font-mono text-[10px] text-fg"
                     >
                       {t}
                       {!readOnly && (
@@ -179,7 +179,7 @@ export function TaskModal({ board, taskId, onClose }: Props) {
                             patch({ tags: task.tags.filter((x) => x !== t) })
                           }
                           aria-label={`Remove ${t}`}
-                          className="text-zinc-500 hover:text-rose-400"
+                          className="text-fg-subtle hover:text-rose-400"
                         >
                           <X className="h-2.5 w-2.5" />
                         </button>
@@ -200,27 +200,27 @@ export function TaskModal({ board, taskId, onClose }: Props) {
                       }
                     }}
                     placeholder="Add tag — Enter or comma to add"
-                    className="flex-1 rounded border border-white/10 bg-ink-900 px-2.5 py-1 text-[12px] text-zinc-100 placeholder:text-zinc-600 focus:border-brand-500/40 focus:outline-none"
+                    className="flex-1 rounded border border-line bg-surface px-2.5 py-1 text-[12px] text-fg placeholder:text-fg-faint focus:border-brand-500/40 focus:outline-none"
                   />
                   <button
                     type="button"
                     onClick={commitTags}
                     disabled={!tagDraft.trim()}
-                    className="rounded bg-white/[0.06] px-2.5 py-1 text-[11px] font-medium text-zinc-200 hover:bg-white/[0.1] disabled:opacity-40"
+                    className="rounded bg-hover px-2.5 py-1 text-[11px] font-medium text-fg hover:bg-hover disabled:opacity-40"
                   >
                     Add
                   </button>
                 </div>
               )}
               {readOnly && task.tags.length === 0 && (
-                <span className="text-[11px] text-zinc-600">No tags</span>
+                <span className="text-[11px] text-fg-faint">No tags</span>
               )}
             </div>
           </Field>
         </div>
 
         <div>
-          <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+          <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-fg-subtle">
             Description
           </div>
           <textarea
@@ -229,7 +229,7 @@ export function TaskModal({ board, taskId, onClose }: Props) {
             readOnly={readOnly}
             onChange={(e) => patch({ description: e.target.value })}
             placeholder={readOnly ? "No description" : "Add more details…"}
-            className="w-full resize-y rounded border border-white/10 bg-ink-900 px-3 py-2 text-[13px] leading-relaxed text-zinc-200 placeholder:text-zinc-600 focus:border-brand-500/40 focus:outline-none read-only:opacity-80"
+            className="w-full resize-y rounded border border-line bg-surface px-3 py-2 text-[13px] leading-relaxed text-fg placeholder:text-fg-faint focus:border-brand-500/40 focus:outline-none read-only:opacity-80"
           />
         </div>
       </div>
@@ -246,7 +246,7 @@ function Field({
 }) {
   return (
     <>
-      <div className="flex items-center text-[11px] uppercase tracking-wider text-zinc-500">
+      <div className="flex items-center text-[11px] uppercase tracking-wider text-fg-subtle">
         {label}
       </div>
       <div className="flex items-center">{children}</div>

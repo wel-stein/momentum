@@ -50,15 +50,15 @@ export function InviteMembersModal({ board, open, onClose }: Props) {
       footer={
         <button
           onClick={onClose}
-          className="rounded bg-white/[0.06] px-3 py-1 text-[12px] font-medium text-zinc-200 hover:bg-white/[0.1]"
+          className="rounded bg-hover px-3 py-1 text-[12px] font-medium text-fg hover:bg-hover"
         >
           Done
         </button>
       }
     >
       <div className="space-y-4">
-        <div className="rounded border border-white/10 bg-ink-900 p-3">
-          <div className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+        <div className="rounded border border-line bg-surface p-3">
+          <div className="text-[10px] font-medium uppercase tracking-wider text-fg-subtle">
             Add member
           </div>
           <div className="mt-2 grid grid-cols-[1fr_1fr_auto] gap-2">
@@ -66,7 +66,7 @@ export function InviteMembersModal({ board, open, onClose }: Props) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Name (optional)"
-              className="rounded border border-white/10 bg-ink-850 px-2 py-1 text-[12px] text-zinc-200 placeholder:text-zinc-600 focus:border-brand-500/40 focus:outline-none"
+              className="rounded border border-line bg-surface px-2 py-1 text-[12px] text-fg placeholder:text-fg-faint focus:border-brand-500/40 focus:outline-none"
             />
             <input
               value={email}
@@ -75,7 +75,7 @@ export function InviteMembersModal({ board, open, onClose }: Props) {
                 if (e.key === "Enter") onInvite();
               }}
               placeholder="email@company.com"
-              className="rounded border border-white/10 bg-ink-850 px-2 py-1 text-[12px] text-zinc-200 placeholder:text-zinc-600 focus:border-brand-500/40 focus:outline-none"
+              className="rounded border border-line bg-surface px-2 py-1 text-[12px] text-fg placeholder:text-fg-faint focus:border-brand-500/40 focus:outline-none"
             />
             <button
               onClick={onInvite}
@@ -90,24 +90,24 @@ export function InviteMembersModal({ board, open, onClose }: Props) {
         </div>
 
         <div>
-          <div className="mb-2 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+          <div className="mb-2 text-[10px] font-medium uppercase tracking-wider text-fg-subtle">
             {board.members.length} member
             {board.members.length === 1 ? "" : "s"}
           </div>
-          <div className="divide-y divide-white/[0.05] rounded border border-white/10">
+          <div className="divide-y divide-line rounded border border-line">
             {board.members.map((m) => (
               <div key={m.id} className="flex items-center gap-3 px-3 py-2">
                 <Avatar member={m} size="md" />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-[12px] font-medium text-zinc-200">
+                  <div className="truncate text-[12px] font-medium text-fg">
                     {m.name}
                     {m.id === me && (
-                      <span className="ml-1 text-[11px] text-zinc-500">
+                      <span className="ml-1 text-[11px] text-fg-subtle">
                         (you)
                       </span>
                     )}
                   </div>
-                  <div className="truncate text-[11px] text-zinc-500">
+                  <div className="truncate text-[11px] text-fg-subtle">
                     {m.email}
                   </div>
                 </div>
@@ -121,7 +121,7 @@ export function InviteMembersModal({ board, open, onClose }: Props) {
                       e.target.value as Member["role"],
                     )
                   }
-                  className="rounded border border-white/10 bg-ink-850 px-1.5 py-0.5 text-[11px] text-zinc-200 disabled:opacity-50"
+                  className="rounded border border-line bg-surface px-1.5 py-0.5 text-[11px] text-fg disabled:opacity-50"
                 >
                   {ROLES.map((r) => (
                     <option key={r} value={r}>
@@ -135,7 +135,7 @@ export function InviteMembersModal({ board, open, onClose }: Props) {
                       if (confirm(`Remove ${m.name} from the board?`))
                         remove(board.id, m.id);
                     }}
-                    className="rounded p-1 text-zinc-500 hover:bg-rose-500/10 hover:text-rose-400"
+                    className="rounded p-1 text-fg-subtle hover:bg-rose-500/10 hover:text-rose-400"
                     aria-label={`Remove ${m.name}`}
                   >
                     <Trash2 className="h-3 w-3" />

@@ -78,10 +78,10 @@ export function KanbanView({ board, onOpenTask, filter }: Props) {
                 className="h-2 w-2 rounded-full"
                 style={{ backgroundColor: g.color }}
               />
-              <h3 className="text-[13px] font-medium tracking-tight text-zinc-200">
+              <h3 className="text-[13px] font-medium tracking-tight text-fg">
                 {g.name}
               </h3>
-              <span className="font-mono text-[10px] text-zinc-500">
+              <span className="font-mono text-[10px] text-fg-subtle">
                 {board.tasks.filter((t) => t.groupId === g.id).length}
               </span>
             </div>
@@ -155,23 +155,23 @@ function Column({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col rounded-md border border-white/[0.06] bg-white/[0.015] p-1.5 transition-colors",
+        "flex flex-col rounded-md border border-line bg-subtle p-1.5 transition-colors",
         isOver && "border-brand-500/40 bg-brand-500/[0.04]",
       )}
     >
       <div className="mb-1.5 flex items-center justify-between px-1.5 pt-1">
         <div className="flex items-center gap-1.5">
           <span className={cn("h-1.5 w-1.5 rounded-full", STATUS_DOT[statusKey])} />
-          <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+          <span className="text-[11px] font-medium uppercase tracking-wider text-fg-muted">
             {label}
           </span>
-          <span className="font-mono text-[10px] text-zinc-500">{count}</span>
+          <span className="font-mono text-[10px] text-fg-subtle">{count}</span>
         </div>
         {onAdd && (
           <button
             onClick={onAdd}
             aria-label="Add task"
-            className="rounded p-0.5 text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200"
+            className="rounded p-0.5 text-fg-subtle hover:bg-hover hover:text-fg"
           >
             <Plus className="h-3 w-3" />
           </button>
@@ -184,7 +184,7 @@ function Column({
 
 function EmptyDropZone() {
   return (
-    <div className="flex h-16 items-center justify-center rounded border border-dashed border-white/5 text-[10px] text-zinc-600">
+    <div className="flex h-16 items-center justify-center rounded border border-dashed border-line text-[10px] text-fg-faint">
       Drop tasks here
     </div>
   );
@@ -234,18 +234,18 @@ function CardInner({
   return (
     <div
       className={cn(
-        "rounded-md border border-white/[0.07] bg-ink-850 p-2.5 transition-colors",
-        !dragging && "hover:border-white/[0.14] hover:bg-ink-800",
-        dragging && "border-white/20 shadow-2xl shadow-black/60",
+        "rounded-md border border-line bg-surface p-2.5 transition-colors",
+        !dragging && "hover:border-line-strong hover:bg-elevated",
+        dragging && "border-line-strong shadow-2xl shadow-black/60",
       )}
     >
       <div className="mb-1.5 flex items-center gap-1.5">
-        <span className="font-mono text-[10px] tracking-tight text-zinc-500">
+        <span className="font-mono text-[10px] tracking-tight text-fg-subtle">
           {taskCode(task.id)}
         </span>
         <PriorityIndicator value={task.priority} />
       </div>
-      <h3 className="line-clamp-2 text-[13px] font-medium leading-snug text-zinc-100">
+      <h3 className="line-clamp-2 text-[13px] font-medium leading-snug text-fg">
         {task.title}
       </h3>
       {task.tags.length > 0 && (
@@ -253,13 +253,13 @@ function CardInner({
           {task.tags.slice(0, 3).map((t) => (
             <span
               key={t}
-              className="rounded bg-white/[0.05] px-1.5 py-0.5 font-mono text-[10px] text-zinc-400"
+              className="rounded bg-hover px-1.5 py-0.5 font-mono text-[10px] text-fg-muted"
             >
               {t}
             </span>
           ))}
           {task.tags.length > 3 && (
-            <span className="text-[10px] text-zinc-600">
+            <span className="text-[10px] text-fg-faint">
               +{task.tags.length - 3}
             </span>
           )}
@@ -272,7 +272,7 @@ function CardInner({
               "text-[11px] tabular-nums",
               overdue && task.status !== "done"
                 ? "text-rose-400"
-                : "text-zinc-500",
+                : "text-fg-subtle",
             )}
           >
             {formatDateSmart(task.dueDate)}

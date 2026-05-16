@@ -2,28 +2,67 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Semantic color tokens. Light is the canonical default; .dark on <html>
+ * swaps to the Linear-dense dark palette. Every component references these
+ * via Tailwind classes (bg-surface, text-fg-muted, border-line, …) instead
+ * of hard-coded zinc/ink values.
+ */
+:root {
+  --bg-app: 250 250 251;
+  --bg-surface: 255 255 255;
+  --bg-elevated: 255 255 255;
+  --bg-hover: 244 244 246;
+  --bg-subtle: 250 250 251;
+
+  --line: 228 228 231;
+  --line-strong: 212 212 216;
+
+  --fg: 24 24 27;
+  --fg-muted: 82 82 91;
+  --fg-subtle: 113 113 122;
+  --fg-faint: 161 161 170;
+
+  --shadow-color: 0 0 0;
+  color-scheme: light;
+}
+
+.dark {
+  --bg-app: 10 10 11;
+  --bg-surface: 19 19 22;
+  --bg-elevated: 26 26 31;
+  --bg-hover: 34 34 39;
+  --bg-subtle: 24 24 27;
+
+  --line: 40 40 47;
+  --line-strong: 60 60 67;
+
+  --fg: 244 244 245;
+  --fg-muted: 161 161 170;
+  --fg-subtle: 113 113 122;
+  --fg-faint: 82 82 91;
+
+  --shadow-color: 0 0 0;
+  color-scheme: dark;
+}
+
 @layer base {
   html,
   body {
     height: 100%;
   }
   body {
-    @apply bg-ink-950 text-zinc-100 antialiased;
+    @apply bg-app text-fg antialiased;
     font-feature-settings:
       "cv11",
       "ss01",
       "ss03";
   }
   * {
-    @apply border-white/[0.07];
+    @apply border-line;
   }
   ::selection {
     background: rgba(139, 92, 246, 0.35);
-  }
-  input,
-  textarea,
-  select {
-    color-scheme: dark;
   }
 }
 
@@ -33,10 +72,10 @@
     width: 10px;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    @apply rounded-full bg-white/10;
+    @apply rounded-full bg-line-strong;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    @apply bg-white/20;
+    @apply bg-fg-faint;
   }
   .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;

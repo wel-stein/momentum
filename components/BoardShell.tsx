@@ -118,7 +118,7 @@ export function BoardShell({
 
   if (!boardOverride && (!auth.ready || !hydrated)) {
     return (
-      <div className="flex h-screen items-center justify-center text-sm text-zinc-600">
+      <div className="flex h-screen items-center justify-center text-sm text-fg-faint">
         Loading…
       </div>
     );
@@ -126,7 +126,7 @@ export function BoardShell({
   if (!board) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-3">
-        <div className="text-sm text-zinc-500">Board not found.</div>
+        <div className="text-sm text-fg-subtle">Board not found.</div>
         <Link
           href="/"
           className="rounded bg-brand-500 px-3 py-1 text-[12px] font-medium text-white hover:bg-brand-400"
@@ -158,12 +158,12 @@ export function BoardShell({
             Sign in to add groups, create tasks, or invite teammates.
           </div>
         )}
-        <header className="border-b border-white/[0.06]">
+        <header className="border-b border-line">
           <div className="flex items-center gap-2 px-5 py-2">
             {!readOnlyProp && (
               <Link
                 href="/"
-                className="rounded p-1 text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200"
+                className="rounded p-1 text-fg-subtle hover:bg-hover hover:text-fg"
                 aria-label="Back"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
@@ -173,13 +173,13 @@ export function BoardShell({
               <button
                 onClick={() => !readOnly && setShowEmoji((v) => !v)}
                 disabled={readOnly}
-                className="grid h-7 w-7 place-items-center rounded bg-white/[0.05] text-base hover:bg-white/[0.08] disabled:hover:bg-white/[0.05]"
+                className="grid h-7 w-7 place-items-center rounded bg-hover text-base hover:bg-hover disabled:hover:bg-hover"
                 aria-label="Change emoji"
               >
                 {board.emoji}
               </button>
               {showEmoji && !readOnly && (
-                <div className="absolute left-0 top-full z-40 mt-1 grid grid-cols-6 gap-0.5 rounded-md border border-white/10 bg-ink-800 p-1.5 shadow-xl shadow-black/40">
+                <div className="absolute left-0 top-full z-40 mt-1 grid grid-cols-6 gap-0.5 rounded-md border border-line bg-elevated p-1.5 shadow-xl shadow-black/40">
                   {BOARD_EMOJIS.map((e) => (
                     <button
                       key={e}
@@ -187,7 +187,7 @@ export function BoardShell({
                         updateEmoji(board.id, e);
                         setShowEmoji(false);
                       }}
-                      className="grid h-7 w-7 place-items-center rounded text-base hover:bg-white/[0.08]"
+                      className="grid h-7 w-7 place-items-center rounded text-base hover:bg-hover"
                     >
                       {e}
                     </button>
@@ -208,9 +208,9 @@ export function BoardShell({
               onKeyDown={(e) => {
                 if (e.key === "Enter") (e.target as HTMLInputElement).blur();
               }}
-              className="rounded border border-transparent bg-transparent px-1 py-0.5 text-[14px] font-medium tracking-tight text-zinc-100 hover:border-white/[0.08] focus:border-brand-500/40 focus:bg-ink-900 focus:outline-none"
+              className="rounded border border-transparent bg-transparent px-1 py-0.5 text-[14px] font-medium tracking-tight text-fg hover:border-line focus:border-brand-500/40 focus:bg-surface focus:outline-none"
             />
-            <span className="font-mono text-[10px] text-zinc-600">
+            <span className="font-mono text-[10px] text-fg-faint">
               {taskCode(board.id)}
             </span>
             <div className="ml-3 hidden items-center gap-2 sm:flex">
@@ -219,7 +219,7 @@ export function BoardShell({
                 <>
                   <button
                     onClick={() => setShowInvite(true)}
-                    className="inline-flex items-center gap-1 rounded border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] font-medium text-zinc-300 hover:bg-white/[0.08]"
+                    className="inline-flex items-center gap-1 rounded border border-line bg-hover px-2 py-1 text-[11px] font-medium text-fg hover:bg-hover"
                   >
                     <UserPlus className="h-3 w-3" /> Invite
                   </button>
@@ -229,7 +229,7 @@ export function BoardShell({
                       "inline-flex items-center gap-1 rounded border px-2 py-1 text-[11px] font-medium",
                       board.shareToken
                         ? "border-brand-400/40 bg-brand-500/[0.08] text-brand-200 hover:bg-brand-500/[0.12]"
-                        : "border-white/10 bg-white/[0.04] text-zinc-300 hover:bg-white/[0.08]",
+                        : "border-line bg-hover text-fg hover:bg-hover",
                     )}
                   >
                     <Share2 className="h-3 w-3" />
@@ -240,13 +240,13 @@ export function BoardShell({
             </div>
             <div className="ml-auto flex items-center gap-3">
               <div className="hidden items-center gap-2 sm:flex">
-                <div className="h-1 w-32 overflow-hidden rounded-full bg-white/[0.06]">
+                <div className="h-1 w-32 overflow-hidden rounded-full bg-hover">
                   <div
                     className="h-full bg-brand-500"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
-                <span className="text-[11px] tabular-nums text-zinc-500">
+                <span className="text-[11px] tabular-nums text-fg-subtle">
                   {progress}%
                 </span>
               </div>
@@ -254,7 +254,7 @@ export function BoardShell({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 border-t border-white/[0.06] px-5 py-1.5">
+          <div className="flex flex-wrap items-center gap-2 border-t border-line px-5 py-1.5">
             <ViewSwitch
               value={readOnly ? localView ?? board.view : board.view}
               onChange={(v) => {
@@ -263,13 +263,13 @@ export function BoardShell({
               }}
             />
             <div className="relative">
-              <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-zinc-500" />
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-fg-subtle" />
               <input
                 ref={searchRef}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search tasks"
-                className="w-56 rounded border border-white/10 bg-white/[0.02] py-1 pl-7 pr-12 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:border-brand-500/40 focus:bg-ink-900 focus:outline-none"
+                className="w-56 rounded border border-line bg-subtle py-1 pl-7 pr-12 text-[11px] text-fg placeholder:text-fg-faint focus:border-brand-500/40 focus:bg-surface focus:outline-none"
               />
               <Kbd className="absolute right-1.5 top-1/2 -translate-y-1/2">
                 /
@@ -373,7 +373,7 @@ function ViewSwitch({
     { key: "timeline", label: "Timeline", icon: <Calendar className="h-3 w-3" /> },
   ];
   return (
-    <div className="inline-flex rounded border border-white/10 bg-white/[0.02] p-0.5">
+    <div className="inline-flex rounded border border-line bg-subtle p-0.5">
       {items.map((i) => (
         <button
           key={i.key}
@@ -382,8 +382,8 @@ function ViewSwitch({
           className={cn(
             "inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors",
             value === i.key
-              ? "bg-white/[0.08] text-zinc-100"
-              : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300",
+              ? "bg-hover text-fg"
+              : "text-fg-subtle hover:bg-hover hover:text-fg",
           )}
         >
           {i.icon} {i.label}
@@ -407,7 +407,7 @@ function SelectField({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="appearance-none rounded border border-white/10 bg-white/[0.02] py-1 pl-2 pr-6 text-[11px] text-zinc-300 focus:border-brand-500/40 focus:outline-none"
+        className="appearance-none rounded border border-line bg-subtle py-1 pl-2 pr-6 text-[11px] text-fg focus:border-brand-500/40 focus:outline-none"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -415,7 +415,7 @@ function SelectField({
           </option>
         ))}
       </select>
-      <ChevronDown className="pointer-events-none absolute right-1 top-1/2 h-3 w-3 -translate-y-1/2 text-zinc-500" />
+      <ChevronDown className="pointer-events-none absolute right-1 top-1/2 h-3 w-3 -translate-y-1/2 text-fg-subtle" />
     </div>
   );
 }

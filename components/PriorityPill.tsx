@@ -46,7 +46,7 @@ function PriorityGlyph({
           className={cn(
             "w-[3px] rounded-[1px]",
             i === 1 ? "h-1.5" : i === 2 ? "h-[7px]" : "h-2.5",
-            i <= lit ? tone : "bg-white/10",
+            i <= lit ? tone : "bg-fg-faint/30",
           )}
         />
       ))}
@@ -95,16 +95,16 @@ export function PriorityPill({ value, onChange, size = "sm", disabled }: Props) 
           setOpen((v) => !v);
         }}
         className={cn(
-          "inline-flex items-center gap-1.5 rounded border border-white/10 bg-white/[0.04] text-zinc-300 transition-colors",
+          "inline-flex items-center gap-1.5 rounded border border-line bg-hover text-fg transition-colors",
           size === "sm" ? "px-1.5 py-0.5 text-[11px]" : "px-2 py-1 text-xs",
-          !disabled && "hover:border-white/20 hover:bg-white/[0.08]",
+          !disabled && "hover:border-line-strong hover:bg-hover",
         )}
       >
         <PriorityGlyph value={value} />
         <span>{PRIORITY_META[value].label}</span>
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-1 w-36 overflow-hidden rounded-md border border-white/10 bg-ink-800 shadow-xl shadow-black/40">
+        <div className="absolute left-0 top-full z-30 mt-1 w-36 overflow-hidden rounded-md border border-line bg-elevated shadow-xl shadow-black/40">
           {ORDER.map((p) => (
             <button
               key={p}
@@ -114,11 +114,11 @@ export function PriorityPill({ value, onChange, size = "sm", disabled }: Props) 
                 onChange(p);
                 setOpen(false);
               }}
-              className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs text-zinc-200 hover:bg-white/[0.06]"
+              className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs text-fg hover:bg-hover"
             >
               <PriorityGlyph value={p} />
               <span className="flex-1">{PRIORITY_META[p].label}</span>
-              {p === value && <Check className="h-3 w-3 text-zinc-400" />}
+              {p === value && <Check className="h-3 w-3 text-fg-muted" />}
             </button>
           ))}
         </div>

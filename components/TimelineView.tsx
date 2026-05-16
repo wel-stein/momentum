@@ -71,14 +71,14 @@ export function TimelineView({ board, onOpenTask, filter }: Props) {
 
   return (
     <div className="px-5 py-4">
-      <div className="overflow-x-auto rounded-md border border-white/[0.07] bg-ink-900 scrollbar-thin">
+      <div className="overflow-x-auto rounded-md border border-line bg-surface scrollbar-thin">
         <div className="relative" style={{ width: widthPx + NAME_COL }}>
           <div
-            className="sticky top-0 z-10 flex border-b border-white/[0.06] bg-ink-900"
+            className="sticky top-0 z-10 flex border-b border-line bg-surface"
             style={{ height: HEADER_PX }}
           >
             <div
-              className="sticky left-0 z-20 shrink-0 border-r border-white/[0.06] bg-ink-900 px-3 py-2 text-[10px] font-medium uppercase tracking-wider text-zinc-500"
+              className="sticky left-0 z-20 shrink-0 border-r border-line bg-surface px-3 py-2 text-[10px] font-medium uppercase tracking-wider text-fg-subtle"
               style={{ width: NAME_COL }}
             >
               Task
@@ -93,25 +93,25 @@ export function TimelineView({ board, onOpenTask, filter }: Props) {
                     key={d}
                     style={{ width: COL_PX }}
                     className={cn(
-                      "shrink-0 border-r border-white/[0.04] text-center",
-                      isWeekend && "bg-white/[0.015]",
+                      "shrink-0 border-r border-line text-center",
+                      isWeekend && "bg-subtle",
                     )}
                   >
                     {isMonthStart && (
-                      <div className="border-b border-white/[0.06] bg-white/[0.02] py-0.5 text-[10px] font-medium text-zinc-400">
+                      <div className="border-b border-line bg-subtle py-0.5 text-[10px] font-medium text-fg-muted">
                         {date.toLocaleDateString(undefined, {
                           month: "short",
                           year: "numeric",
                         })}
                       </div>
                     )}
-                    <div className="py-1.5 text-[10px] tabular-nums text-zinc-500">
+                    <div className="py-1.5 text-[10px] tabular-nums text-fg-subtle">
                       <div className="uppercase">
                         {date.toLocaleDateString(undefined, {
                           weekday: "short",
                         })}
                       </div>
-                      <div className="font-medium text-zinc-300">
+                      <div className="font-medium text-fg">
                         {date.getDate()}
                       </div>
                     </div>
@@ -125,15 +125,15 @@ export function TimelineView({ board, onOpenTask, filter }: Props) {
             const tasks = dated.filter((t) => t.groupId === g.id);
             if (tasks.length === 0) return null;
             return (
-              <div key={g.id} className="border-b border-white/[0.06] last:border-b-0">
+              <div key={g.id} className="border-b border-line last:border-b-0">
                 <div
-                  className="sticky left-0 z-10 flex items-center gap-2 border-b border-white/[0.04] bg-ink-900 px-3 py-1.5"
+                  className="sticky left-0 z-10 flex items-center gap-2 border-b border-line bg-surface px-3 py-1.5"
                   style={{ borderLeft: `2px solid ${g.color}` }}
                 >
-                  <span className="text-[12px] font-medium tracking-tight text-zinc-200">
+                  <span className="text-[12px] font-medium tracking-tight text-fg">
                     {g.name}
                   </span>
-                  <span className="font-mono text-[10px] text-zinc-500">
+                  <span className="font-mono text-[10px] text-fg-subtle">
                     {tasks.length}
                   </span>
                 </div>
@@ -173,7 +173,7 @@ export function TimelineView({ board, onOpenTask, filter }: Props) {
         </div>
       )}
       {dated.length === 0 && (
-        <div className="mt-3 rounded-md border border-dashed border-white/10 px-4 py-6 text-center text-[12px] text-zinc-500">
+        <div className="mt-3 rounded-md border border-dashed border-line px-4 py-6 text-center text-[12px] text-fg-subtle">
           Add start and due dates to tasks to see them on the timeline.
         </div>
       )}
@@ -205,16 +205,16 @@ function Row({
   return (
     <div className="flex">
       <div
-        className="sticky left-0 z-10 shrink-0 border-r border-white/[0.06] bg-ink-900 px-3 py-1.5"
+        className="sticky left-0 z-10 shrink-0 border-r border-line bg-surface px-3 py-1.5"
         style={{ width: NAME_COL }}
       >
         <div className="flex items-center gap-1.5">
-          <span className="font-mono text-[10px] text-zinc-500">
+          <span className="font-mono text-[10px] text-fg-subtle">
             {taskCode(task.id)}
           </span>
         </div>
-        <div className="truncate text-[12px] text-zinc-200">{task.title}</div>
-        <div className="text-[10px] tabular-nums text-zinc-500">
+        <div className="truncate text-[12px] text-fg">{task.title}</div>
+        <div className="text-[10px] tabular-nums text-fg-subtle">
           {formatDateSmart(task.startDate)}
           {task.startDate && task.dueDate && " → "}
           {formatDateSmart(task.dueDate)}
