@@ -183,7 +183,13 @@ export function BoardShell({
                 {board.emoji}
               </button>
               {showEmoji && !readOnly && (
-                <div className="absolute left-0 top-full z-40 mt-1 grid grid-cols-6 gap-1 rounded-md border border-line bg-elevated p-2 shadow-xl shadow-black/40">
+                <div
+                  className="absolute left-0 top-full z-40 mt-1 grid w-max gap-1 rounded-md border border-line bg-elevated p-2 shadow-xl shadow-black/40"
+                  // Pin to six 36px columns instead of grid-cols-6's
+                  // 1fr-minmax, which would let columns shrink past content
+                  // and stack the emojis vertically under a constrained parent.
+                  style={{ gridTemplateColumns: "repeat(6, 2.25rem)" }}
+                >
                   {BOARD_EMOJIS.map((e) => (
                     <button
                       key={e}
@@ -191,7 +197,7 @@ export function BoardShell({
                         updateEmoji(board.id, e);
                         setShowEmoji(false);
                       }}
-                      className="grid h-9 w-9 place-items-center overflow-hidden rounded text-xl leading-none hover:bg-hover"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded text-xl leading-none hover:bg-hover"
                     >
                       <span className="leading-none">{e}</span>
                     </button>
