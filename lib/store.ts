@@ -15,15 +15,31 @@ import {
   BOARD_EMOJIS,
 } from "./types";
 import { pickAvatarColor } from "./utils";
+import {
+  deleteBoard as dbDeleteBoard,
+  deleteGroup as dbDeleteGroup,
+  deleteMember as dbDeleteMember,
+  deleteTask as dbDeleteTask,
+  fetchAllBoards,
+  seedSampleBoard,
+  setTaskAssignees,
+  upsertBoard,
+  upsertGroup,
+  upsertMember,
+  upsertTask,
+} from "./db";
+import { isSupabaseConfigured } from "./supabase";
 
 interface State {
   boards: Board[];
   currentUserId: string;
   hydrated: boolean;
+  loading: boolean;
+  syncError: string | null;
 }
 
 interface Actions {
-  setHydrated: () => void;
+  setHydrated: () => Promise<void>;
   createBoard: (name: string, description?: string) => string;
   deleteBoard: (boardId: string) => void;
   renameBoard: (boardId: string, name: string) => void;
@@ -202,272 +218,427 @@ function makeSampleBoard(currentUserId: string): Board {
   };
 }
 
+// fire-and-forget; swallow rejections so we never crash the UI
+function fnf<T>(p: Promise<T>) {
+  p.catch((err) => console.error("[momentum/store] sync error", err));
+}
+
 export const useStore = create<State & Actions>()(
   persist(
     (set, get) => ({
       boards: [],
       currentUserId: "",
       hydrated: false,
+      loading: false,
+      syncError: null,
 
-      setHydrated: () => {
-        if (get().hydrated) return;
-        let { currentUserId, boards } = get();
+      setHydrated: async () => {
+        if (get().hydrated || get().loading) return;
+        set({ loading: true, syncError: null });
+        let currentUserId = get().currentUserId;
         if (!currentUserId) currentUserId = nanoid(10);
-        if (boards.length === 0) {
-          boards = [makeSampleBoard(currentUserId)];
+
+        if (!isSupabaseConfigured()) {
+          // Local-only fallback: keep the in-memory sample if there are no boards
+          let boards = get().boards;
+          if (boards.length === 0) boards = [makeSampleBoard(currentUserId)];
+          set({
+            currentUserId,
+            boards,
+            hydrated: true,
+            loading: false,
+            syncError: "Supabase env vars missing — using local sample only.",
+          });
+          return;
         }
-        set({ currentUserId, boards, hydrated: true });
+
+        const remote = await fetchAllBoards();
+        if (remote == null) {
+          set({
+            currentUserId,
+            hydrated: true,
+            loading: false,
+            syncError:
+              "Could not reach Supabase. Did you run the SQL migration in the dashboard?",
+          });
+          return;
+        }
+        if (remote.length === 0) {
+          const sample = makeSampleBoard(currentUserId);
+          set({ currentUserId, boards: [sample], hydrated: true, loading: false });
+          fnf(seedSampleBoard(sample));
+          return;
+        }
+        set({
+          currentUserId,
+          boards: remote,
+          hydrated: true,
+          loading: false,
+        });
       },
 
       createBoard: (name, description) => {
         const now = nowIso();
-        const me = get().currentUserId;
+        const meId = get().currentUserId;
+        const me: Member = {
+          id: meId,
+          name: "You",
+          email: "you@momentum.app",
+          avatarColor: pickAvatarColor(meId),
+          role: "owner",
+        };
+        const groups: Group[] = [
+          { id: nanoid(8), name: "To do", color: GROUP_COLORS[0] },
+          { id: nanoid(8), name: "Doing", color: GROUP_COLORS[2] },
+          { id: nanoid(8), name: "Done", color: GROUP_COLORS[1] },
+        ];
         const board: Board = {
           id: nanoid(8),
           name: name.trim() || "Untitled board",
           description,
           emoji: BOARD_EMOJIS[Math.floor(Math.random() * BOARD_EMOJIS.length)],
           view: "kanban",
-          groups: [
-            { id: nanoid(8), name: "To do", color: GROUP_COLORS[0] },
-            { id: nanoid(8), name: "Doing", color: GROUP_COLORS[2] },
-            { id: nanoid(8), name: "Done", color: GROUP_COLORS[1] },
-          ],
+          groups,
           tasks: [],
-          members: [
-            {
-              id: me,
-              name: "You",
-              email: "you@momentum.app",
-              avatarColor: pickAvatarColor(me),
-              role: "owner",
-            },
-          ],
+          members: [me],
           createdAt: now,
           updatedAt: now,
         };
         set((s) => ({ boards: [board, ...s.boards] }));
+        fnf(
+          (async () => {
+            await upsertBoard(board);
+            await upsertMember(board.id, me);
+            await Promise.all(groups.map((g, i) => upsertGroup(board.id, g, i)));
+          })(),
+        );
         return board.id;
       },
 
-      deleteBoard: (boardId) =>
-        set((s) => ({ boards: s.boards.filter((b) => b.id !== boardId) })),
+      deleteBoard: (boardId) => {
+        set((s) => ({ boards: s.boards.filter((b) => b.id !== boardId) }));
+        fnf(dbDeleteBoard(boardId));
+      },
 
-      renameBoard: (boardId, name) =>
+      renameBoard: (boardId, name) => {
+        const updated = nowIso();
+        let touched: Board | undefined;
+        set((s) => ({
+          boards: s.boards.map((b) => {
+            if (b.id !== boardId) return b;
+            touched = { ...b, name, updatedAt: updated };
+            return touched;
+          }),
+        }));
+        if (touched) fnf(upsertBoard(touched));
+      },
+
+      updateBoardEmoji: (boardId, emoji) => {
+        const updated = nowIso();
+        let touched: Board | undefined;
+        set((s) => ({
+          boards: s.boards.map((b) => {
+            if (b.id !== boardId) return b;
+            touched = { ...b, emoji, updatedAt: updated };
+            return touched;
+          }),
+        }));
+        if (touched) fnf(upsertBoard(touched));
+      },
+
+      setView: (boardId, view) => {
+        const updated = nowIso();
+        let touched: Board | undefined;
+        set((s) => ({
+          boards: s.boards.map((b) => {
+            if (b.id !== boardId) return b;
+            touched = { ...b, view, updatedAt: updated };
+            return touched;
+          }),
+        }));
+        if (touched) fnf(upsertBoard(touched));
+      },
+
+      addGroup: (boardId, name) => {
+        const board = get().boards.find((b) => b.id === boardId);
+        if (!board) return;
+        const color = GROUP_COLORS[board.groups.length % GROUP_COLORS.length];
+        const group: Group = {
+          id: nanoid(8),
+          name: name.trim() || "New group",
+          color,
+        };
+        const position = board.groups.length;
         set((s) => ({
           boards: s.boards.map((b) =>
-            b.id === boardId ? { ...b, name, updatedAt: nowIso() } : b,
+            b.id === boardId
+              ? { ...b, groups: [...b.groups, group], updatedAt: nowIso() }
+              : b,
           ),
-        })),
+        }));
+        fnf(upsertGroup(boardId, group, position));
+      },
 
-      updateBoardEmoji: (boardId, emoji) =>
+      renameGroup: (boardId, groupId, name) => {
+        let touched: Group | undefined;
+        let position = 0;
+        set((s) => ({
+          boards: s.boards.map((b) => {
+            if (b.id !== boardId) return b;
+            return {
+              ...b,
+              groups: b.groups.map((g, i) => {
+                if (g.id !== groupId) return g;
+                touched = { ...g, name };
+                position = i;
+                return touched;
+              }),
+              updatedAt: nowIso(),
+            };
+          }),
+        }));
+        if (touched) fnf(upsertGroup(boardId, touched, position));
+      },
+
+      updateGroupColor: (boardId, groupId, color) => {
+        let touched: Group | undefined;
+        let position = 0;
+        set((s) => ({
+          boards: s.boards.map((b) => {
+            if (b.id !== boardId) return b;
+            return {
+              ...b,
+              groups: b.groups.map((g, i) => {
+                if (g.id !== groupId) return g;
+                touched = { ...g, color };
+                position = i;
+                return touched;
+              }),
+              updatedAt: nowIso(),
+            };
+          }),
+        }));
+        if (touched) fnf(upsertGroup(boardId, touched, position));
+      },
+
+      deleteGroup: (boardId, groupId) => {
         set((s) => ({
           boards: s.boards.map((b) =>
-            b.id === boardId ? { ...b, emoji, updatedAt: nowIso() } : b,
+            b.id !== boardId
+              ? b
+              : {
+                  ...b,
+                  groups: b.groups.filter((g) => g.id !== groupId),
+                  tasks: b.tasks.filter((t) => t.groupId !== groupId),
+                  updatedAt: nowIso(),
+                },
           ),
-        })),
+        }));
+        fnf(dbDeleteGroup(groupId));
+      },
 
-      setView: (boardId, view) =>
+      toggleGroupCollapsed: (boardId, groupId) => {
+        let touched: Group | undefined;
+        let position = 0;
+        set((s) => ({
+          boards: s.boards.map((b) => {
+            if (b.id !== boardId) return b;
+            return {
+              ...b,
+              groups: b.groups.map((g, i) => {
+                if (g.id !== groupId) return g;
+                touched = { ...g, collapsed: !g.collapsed };
+                position = i;
+                return touched;
+              }),
+            };
+          }),
+        }));
+        if (touched) fnf(upsertGroup(boardId, touched, position));
+      },
+
+      addTask: (boardId, groupId, title) => {
+        const now = nowIso();
+        const task: Task = {
+          id: nanoid(8),
+          title: title.trim() || "New task",
+          status: "not_started",
+          priority: "medium" as Priority,
+          assigneeIds: [],
+          tags: [],
+          groupId,
+          createdAt: now,
+          updatedAt: now,
+        };
         set((s) => ({
           boards: s.boards.map((b) =>
-            b.id === boardId ? { ...b, view, updatedAt: nowIso() } : b,
+            b.id !== boardId
+              ? b
+              : { ...b, tasks: [...b.tasks, task], updatedAt: now },
           ),
-        })),
+        }));
+        fnf(upsertTask(boardId, task));
+      },
 
-      addGroup: (boardId, name) =>
+      updateTask: (boardId, taskId, patch) => {
+        let touched: Task | undefined;
         set((s) => ({
           boards: s.boards.map((b) => {
             if (b.id !== boardId) return b;
-            const color = GROUP_COLORS[b.groups.length % GROUP_COLORS.length];
             return {
               ...b,
-              groups: [
-                ...b.groups,
-                { id: nanoid(8), name: name.trim() || "New group", color },
-              ],
+              tasks: b.tasks.map((t) => {
+                if (t.id !== taskId) return t;
+                touched = { ...t, ...patch, updatedAt: nowIso() };
+                return touched;
+              }),
               updatedAt: nowIso(),
             };
           }),
-        })),
+        }));
+        if (touched) {
+          const t = touched;
+          if (patch.assigneeIds) {
+            fnf(
+              (async () => {
+                await upsertTask(boardId, t);
+              })(),
+            );
+          } else {
+            fnf(upsertTask(boardId, t));
+          }
+        }
+      },
 
-      renameGroup: (boardId, groupId, name) =>
+      moveTask: (boardId, taskId, toGroupId, toStatus) => {
+        let touched: Task | undefined;
         set((s) => ({
           boards: s.boards.map((b) => {
             if (b.id !== boardId) return b;
             return {
               ...b,
-              groups: b.groups.map((g) =>
-                g.id === groupId ? { ...g, name } : g,
-              ),
+              tasks: b.tasks.map((t) => {
+                if (t.id !== taskId) return t;
+                touched = {
+                  ...t,
+                  groupId: toGroupId,
+                  ...(toStatus ? { status: toStatus } : {}),
+                  updatedAt: nowIso(),
+                };
+                return touched;
+              }),
               updatedAt: nowIso(),
             };
           }),
-        })),
+        }));
+        if (touched) fnf(upsertTask(boardId, touched));
+      },
 
-      updateGroupColor: (boardId, groupId, color) =>
+      deleteTask: (boardId, taskId) => {
+        set((s) => ({
+          boards: s.boards.map((b) =>
+            b.id !== boardId
+              ? b
+              : {
+                  ...b,
+                  tasks: b.tasks.filter((t) => t.id !== taskId),
+                  updatedAt: nowIso(),
+                },
+          ),
+        }));
+        fnf(dbDeleteTask(taskId));
+      },
+
+      inviteMember: (boardId, name, email) => {
+        const board = get().boards.find((b) => b.id === boardId);
+        if (!board) return;
+        if (
+          board.members.some(
+            (m) => m.email.toLowerCase() === email.toLowerCase(),
+          )
+        )
+          return;
+        const member: Member = {
+          id: nanoid(8),
+          name: name.trim() || email.split("@")[0],
+          email: email.trim(),
+          avatarColor: pickAvatarColor(email),
+          role: "member",
+        };
+        set((s) => ({
+          boards: s.boards.map((b) =>
+            b.id !== boardId
+              ? b
+              : { ...b, members: [...b.members, member], updatedAt: nowIso() },
+          ),
+        }));
+        fnf(upsertMember(boardId, member));
+      },
+
+      removeMember: (boardId, memberId) => {
+        const board = get().boards.find((b) => b.id === boardId);
+        if (!board) return;
+        const affectedTasks = board.tasks
+          .filter((t) => t.assigneeIds.includes(memberId))
+          .map((t) => ({
+            ...t,
+            assigneeIds: t.assigneeIds.filter((id) => id !== memberId),
+          }));
+        set((s) => ({
+          boards: s.boards.map((b) =>
+            b.id !== boardId
+              ? b
+              : {
+                  ...b,
+                  members: b.members.filter((m) => m.id !== memberId),
+                  tasks: b.tasks.map((t) =>
+                    t.assigneeIds.includes(memberId)
+                      ? {
+                          ...t,
+                          assigneeIds: t.assigneeIds.filter(
+                            (id) => id !== memberId,
+                          ),
+                        }
+                      : t,
+                  ),
+                  updatedAt: nowIso(),
+                },
+          ),
+        }));
+        fnf(
+          (async () => {
+            await dbDeleteMember(memberId);
+            for (const t of affectedTasks) {
+              await setTaskAssignees(t.id, t.assigneeIds);
+            }
+          })(),
+        );
+      },
+
+      updateMemberRole: (boardId, memberId, role) => {
+        let touched: Member | undefined;
         set((s) => ({
           boards: s.boards.map((b) => {
             if (b.id !== boardId) return b;
             return {
               ...b,
-              groups: b.groups.map((g) =>
-                g.id === groupId ? { ...g, color } : g,
-              ),
+              members: b.members.map((m) => {
+                if (m.id !== memberId) return m;
+                touched = { ...m, role };
+                return touched;
+              }),
               updatedAt: nowIso(),
             };
           }),
-        })),
-
-      deleteGroup: (boardId, groupId) =>
-        set((s) => ({
-          boards: s.boards.map((b) => {
-            if (b.id !== boardId) return b;
-            return {
-              ...b,
-              groups: b.groups.filter((g) => g.id !== groupId),
-              tasks: b.tasks.filter((t) => t.groupId !== groupId),
-              updatedAt: nowIso(),
-            };
-          }),
-        })),
-
-      toggleGroupCollapsed: (boardId, groupId) =>
-        set((s) => ({
-          boards: s.boards.map((b) => {
-            if (b.id !== boardId) return b;
-            return {
-              ...b,
-              groups: b.groups.map((g) =>
-                g.id === groupId ? { ...g, collapsed: !g.collapsed } : g,
-              ),
-            };
-          }),
-        })),
-
-      addTask: (boardId, groupId, title) =>
-        set((s) => ({
-          boards: s.boards.map((b) => {
-            if (b.id !== boardId) return b;
-            const now = nowIso();
-            const task: Task = {
-              id: nanoid(8),
-              title: title.trim() || "New task",
-              status: "not_started",
-              priority: "medium" as Priority,
-              assigneeIds: [],
-              tags: [],
-              groupId,
-              createdAt: now,
-              updatedAt: now,
-            };
-            return { ...b, tasks: [...b.tasks, task], updatedAt: now };
-          }),
-        })),
-
-      updateTask: (boardId, taskId, patch) =>
-        set((s) => ({
-          boards: s.boards.map((b) => {
-            if (b.id !== boardId) return b;
-            return {
-              ...b,
-              tasks: b.tasks.map((t) =>
-                t.id === taskId
-                  ? { ...t, ...patch, updatedAt: nowIso() }
-                  : t,
-              ),
-              updatedAt: nowIso(),
-            };
-          }),
-        })),
-
-      moveTask: (boardId, taskId, toGroupId, toStatus) =>
-        set((s) => ({
-          boards: s.boards.map((b) => {
-            if (b.id !== boardId) return b;
-            return {
-              ...b,
-              tasks: b.tasks.map((t) =>
-                t.id === taskId
-                  ? {
-                      ...t,
-                      groupId: toGroupId,
-                      ...(toStatus ? { status: toStatus } : {}),
-                      updatedAt: nowIso(),
-                    }
-                  : t,
-              ),
-              updatedAt: nowIso(),
-            };
-          }),
-        })),
-
-      deleteTask: (boardId, taskId) =>
-        set((s) => ({
-          boards: s.boards.map((b) => {
-            if (b.id !== boardId) return b;
-            return {
-              ...b,
-              tasks: b.tasks.filter((t) => t.id !== taskId),
-              updatedAt: nowIso(),
-            };
-          }),
-        })),
-
-      inviteMember: (boardId, name, email) =>
-        set((s) => ({
-          boards: s.boards.map((b) => {
-            if (b.id !== boardId) return b;
-            if (b.members.some((m) => m.email.toLowerCase() === email.toLowerCase()))
-              return b;
-            const member: Member = {
-              id: nanoid(8),
-              name: name.trim() || email.split("@")[0],
-              email: email.trim(),
-              avatarColor: pickAvatarColor(email),
-              role: "member",
-            };
-            return {
-              ...b,
-              members: [...b.members, member],
-              updatedAt: nowIso(),
-            };
-          }),
-        })),
-
-      removeMember: (boardId, memberId) =>
-        set((s) => ({
-          boards: s.boards.map((b) => {
-            if (b.id !== boardId) return b;
-            return {
-              ...b,
-              members: b.members.filter((m) => m.id !== memberId),
-              tasks: b.tasks.map((t) => ({
-                ...t,
-                assigneeIds: t.assigneeIds.filter((id) => id !== memberId),
-              })),
-              updatedAt: nowIso(),
-            };
-          }),
-        })),
-
-      updateMemberRole: (boardId, memberId, role) =>
-        set((s) => ({
-          boards: s.boards.map((b) => {
-            if (b.id !== boardId) return b;
-            return {
-              ...b,
-              members: b.members.map((m) =>
-                m.id === memberId ? { ...m, role } : m,
-              ),
-              updatedAt: nowIso(),
-            };
-          }),
-        })),
+        }));
+        if (touched) fnf(upsertMember(boardId, touched));
+      },
     }),
     {
       name: "momentum-store",
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ boards: s.boards, currentUserId: s.currentUserId }),
+      // Only persist currentUserId. Boards live in Supabase now.
+      partialize: (s) => ({ currentUserId: s.currentUserId }),
     },
   ),
 );

@@ -22,6 +22,7 @@ import { TableView } from "./TableView";
 import { TimelineView } from "./TimelineView";
 import { TaskModal } from "./TaskModal";
 import { InviteMembersModal } from "./InviteMembersModal";
+import { SyncBanner } from "./SyncBanner";
 
 interface Props {
   boardId: string;
@@ -45,7 +46,7 @@ export function BoardShell({ boardId }: Props) {
   const [titleDraft, setTitleDraft] = useState("");
 
   useEffect(() => {
-    setHydrated();
+    void setHydrated();
   }, [setHydrated]);
 
   useEffect(() => {
@@ -100,6 +101,7 @@ export function BoardShell({ boardId }: Props) {
 
   return (
     <div className="flex min-h-screen flex-col">
+      <SyncBanner />
       <header className="border-b bg-white">
         <div className="flex items-center gap-3 px-6 py-3">
           <Link

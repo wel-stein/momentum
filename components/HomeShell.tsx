@@ -13,6 +13,7 @@ import {
 import { useStore } from "@/lib/store";
 import { Modal } from "./Modal";
 import { AvatarStack } from "./Avatar";
+import { SyncBanner } from "./SyncBanner";
 import { formatDateLong } from "@/lib/utils";
 
 export function HomeShell() {
@@ -27,7 +28,7 @@ export function HomeShell() {
   const [description, setDescription] = useState("");
 
   useEffect(() => {
-    setHydrated();
+    void setHydrated();
   }, [setHydrated]);
 
   if (!hydrated) {
@@ -40,6 +41,7 @@ export function HomeShell() {
 
   return (
     <div className="min-h-screen">
+      <SyncBanner />
       <header className="border-b bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2">
