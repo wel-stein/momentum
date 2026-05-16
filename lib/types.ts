@@ -36,6 +36,8 @@ export interface Member {
   name: string;
   email: string;
   avatarColor: string;
+  avatarUrl?: string | null;
+  authUserId?: string | null;
   role: "owner" | "admin" | "member" | "viewer";
 }
 

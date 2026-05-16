@@ -4,7 +4,7 @@ import { cn, initials } from "@/lib/utils";
 import type { Member } from "@/lib/types";
 
 interface AvatarProps {
-  member: Pick<Member, "name" | "avatarColor">;
+  member: Pick<Member, "name" | "avatarColor"> & { avatarUrl?: string | null };
   size?: "xs" | "sm" | "md" | "lg";
   className?: string;
   title?: string;
@@ -18,15 +18,28 @@ const SIZE: Record<NonNullable<AvatarProps["size"]>, string> = {
 };
 
 export function Avatar({ member, size = "sm", className, title }: AvatarProps) {
+  const cls = cn(
+    "inline-flex items-center justify-center rounded-full font-semibold text-white ring-2 ring-white overflow-hidden",
+    SIZE[size],
+    className,
+  );
+  if (member.avatarUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={member.avatarUrl}
+        alt={member.name}
+        title={title ?? member.name}
+        referrerPolicy="no-referrer"
+        className={cn(cls, "object-cover")}
+      />
+    );
+  }
   return (
     <span
       title={title ?? member.name}
       style={{ backgroundColor: member.avatarColor }}
-      className={cn(
-        "inline-flex items-center justify-center rounded-full font-semibold text-white ring-2 ring-white",
-        SIZE[size],
-        className,
-      )}
+      className={cls}
     >
       {initials(member.name)}
     </span>
@@ -38,7 +51,9 @@ export function AvatarStack({
   max = 3,
   size = "sm",
 }: {
-  members: Pick<Member, "name" | "avatarColor" | "id">[];
+  members: (Pick<Member, "name" | "avatarColor" | "id"> & {
+    avatarUrl?: string | null;
+  })[];
   max?: number;
   size?: AvatarProps["size"];
 }) {

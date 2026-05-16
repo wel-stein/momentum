@@ -14,6 +14,8 @@ import { useStore } from "@/lib/store";
 import { Modal } from "./Modal";
 import { AvatarStack } from "./Avatar";
 import { SyncBanner } from "./SyncBanner";
+import { UserMenu } from "./UserMenu";
+import { useAuth, useUser } from "./AuthProvider";
 import { formatDateLong } from "@/lib/utils";
 
 export function HomeShell() {
@@ -22,16 +24,21 @@ export function HomeShell() {
   const boards = useStore((s) => s.boards);
   const createBoard = useStore((s) => s.createBoard);
   const deleteBoard = useStore((s) => s.deleteBoard);
+  const auth = useAuth();
+  const user = useUser();
 
   const [showNew, setShowNew] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
+  // Hydrate once auth is ready so the store knows whether to seed
+  // (skipped for anonymous users, who can't write to Supabase).
   useEffect(() => {
+    if (!auth.ready) return;
     void setHydrated();
-  }, [setHydrated]);
+  }, [setHydrated, auth.ready]);
 
-  if (!hydrated) {
+  if (!auth.ready || !hydrated) {
     return (
       <div className="flex h-screen items-center justify-center text-slate-400">
         Loading…
@@ -55,12 +62,17 @@ export function HomeShell() {
               </div>
             </div>
           </div>
-          <button
-            onClick={() => setShowNew(true)}
-            className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
-          >
-            <Plus className="h-4 w-4" /> New board
-          </button>
+          <div className="flex items-center gap-3">
+            {user && (
+              <button
+                onClick={() => setShowNew(true)}
+                className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
+              >
+                <Plus className="h-4 w-4" /> New board
+              </button>
+            )}
+            <UserMenu />
+          </div>
         </div>
       </header>
 
@@ -73,7 +85,9 @@ export function HomeShell() {
         </div>
 
         {boards.length === 0 ? (
-          <EmptyState onCreate={() => setShowNew(true)} />
+          <EmptyState
+            onCreate={user ? () => setShowNew(true) : undefined}
+          />
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {boards.map((b) => {
@@ -114,20 +128,22 @@ export function HomeShell() {
                       Updated {formatDateLong(b.updatedAt)}
                     </div>
                   </Link>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (
-                        confirm(`Delete "${b.name}"? This cannot be undone.`)
-                      ) {
-                        deleteBoard(b.id);
-                      }
-                    }}
-                    aria-label="Delete board"
-                    className="absolute right-3 top-3 hidden rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 group-hover:block"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  {user && (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (
+                          confirm(`Delete "${b.name}"? This cannot be undone.`)
+                        ) {
+                          deleteBoard(b.id);
+                        }
+                      }}
+                      aria-label="Delete board"
+                      className="absolute right-3 top-3 hidden rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 group-hover:block"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -207,7 +223,7 @@ function ViewIcon({ view }: { view: string }) {
   );
 }
 
-function EmptyState({ onCreate }: { onCreate: () => void }) {
+function EmptyState({ onCreate }: { onCreate?: () => void }) {
   return (
     <div className="rounded-xl border border-dashed bg-white p-12 text-center">
       <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-brand-50 text-brand-600">
@@ -215,14 +231,18 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
       </div>
       <h2 className="mt-3 text-lg font-semibold">No boards yet</h2>
       <p className="mt-1 text-sm text-slate-500">
-        Create your first board to start tracking work.
+        {onCreate
+          ? "Create your first board to start tracking work."
+          : "Sign in with Google to create your first board."}
       </p>
-      <button
-        onClick={onCreate}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
-      >
-        <Plus className="h-4 w-4" /> New board
-      </button>
+      {onCreate && (
+        <button
+          onClick={onCreate}
+          className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+        >
+          <Plus className="h-4 w-4" /> New board
+        </button>
+      )}
     </div>
   );
 }

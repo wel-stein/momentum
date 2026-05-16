@@ -27,6 +27,8 @@ import { InviteMembersModal } from "./InviteMembersModal";
 import { ShareModal } from "./ShareModal";
 import { SyncBanner } from "./SyncBanner";
 import { BoardProvider } from "./BoardContext";
+import { UserMenu } from "./UserMenu";
+import { useAuth, useUser } from "./AuthProvider";
 
 interface Props {
   boardId: string;
@@ -36,7 +38,11 @@ interface Props {
   readOnly?: boolean;
 }
 
-export function BoardShell({ boardId, board: boardOverride, readOnly = false }: Props) {
+export function BoardShell({
+  boardId,
+  board: boardOverride,
+  readOnly: readOnlyProp = false,
+}: Props) {
   const hydrated = useStore((s) => s.hydrated);
   const setHydrated = useStore((s) => s.setHydrated);
   const boardFromStore = useStore((s) =>
@@ -47,6 +53,10 @@ export function BoardShell({ boardId, board: boardOverride, readOnly = false }: 
   const renameBoard = useStore((s) => s.renameBoard);
   const updateEmoji = useStore((s) => s.updateBoardEmoji);
   const addGroup = useStore((s) => s.addGroup);
+  const auth = useAuth();
+  const user = useUser();
+  // Sharing context, or signed-out visitors, both render as view-only.
+  const readOnly = readOnlyProp || !user;
 
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [showInvite, setShowInvite] = useState(false);
@@ -61,8 +71,9 @@ export function BoardShell({ boardId, board: boardOverride, readOnly = false }: 
   useEffect(() => {
     // No need to load the whole boards list in read-only / share mode.
     if (boardOverride) return;
+    if (!auth.ready) return;
     void setHydrated();
-  }, [setHydrated, boardOverride]);
+  }, [setHydrated, boardOverride, auth.ready]);
 
   useEffect(() => {
     if (board) setTitleDraft(board.name);
@@ -88,7 +99,7 @@ export function BoardShell({ boardId, board: boardOverride, readOnly = false }: 
     };
   }, [search, statusFilter, assigneeFilter]);
 
-  if (!boardOverride && !hydrated) {
+  if (!boardOverride && (!auth.ready || !hydrated)) {
     return (
       <div className="flex h-screen items-center justify-center text-slate-400">
         Loading…
@@ -118,10 +129,16 @@ export function BoardShell({ boardId, board: boardOverride, readOnly = false }: 
     <BoardProvider value={{ readOnly }}>
     <div className="flex min-h-screen flex-col">
       <SyncBanner />
-      {readOnly && (
+      {readOnlyProp && (
         <div className="border-b border-brand-200 bg-brand-50 px-4 py-1.5 text-center text-xs text-brand-800">
           <Eye className="mr-1 inline h-3 w-3" />
           You're viewing a shared board in read-only mode.
+        </div>
+      )}
+      {!readOnlyProp && !user && (
+        <div className="border-b border-amber-200 bg-amber-50 px-4 py-1.5 text-center text-xs text-amber-900">
+          <Eye className="mr-1 inline h-3 w-3" />
+          Sign in to add groups, create tasks, or invite teammates.
         </div>
       )}
       <header className="border-b bg-white">
@@ -213,6 +230,7 @@ export function BoardShell({ boardId, board: boardOverride, readOnly = false }: 
                 {progress}%
               </span>
             </div>
+            {!readOnlyProp && <UserMenu />}
           </div>
         </div>
 

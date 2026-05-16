@@ -29,10 +29,12 @@ import {
   upsertTask,
 } from "./db";
 import { isSupabaseConfigured } from "./supabase";
+import type { CurrentUser } from "./auth";
 
 interface State {
   boards: Board[];
   currentUserId: string;
+  currentUser: CurrentUser | null;
   hydrated: boolean;
   loading: boolean;
   syncError: string | null;
@@ -40,6 +42,7 @@ interface State {
 
 interface Actions {
   setHydrated: () => Promise<void>;
+  setCurrentUser: (user: CurrentUser | null) => void;
   createBoard: (name: string, description?: string) => string;
   deleteBoard: (boardId: string) => void;
   renameBoard: (boardId: string, name: string) => void;
@@ -82,7 +85,10 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function makeSampleBoard(currentUserId: string): Board {
+function makeSampleBoard(
+  currentUserId: string,
+  currentUser: CurrentUser | null,
+): Board {
   const now = nowIso();
   const inDays = (n: number) => {
     const d = new Date();
@@ -105,13 +111,23 @@ function makeSampleBoard(currentUserId: string): Board {
     color: GROUP_COLORS[3],
   };
 
-  const me: Member = {
-    id: currentUserId,
-    name: "You",
-    email: "you@momentum.app",
-    avatarColor: pickAvatarColor(currentUserId),
-    role: "owner",
-  };
+  const me: Member = currentUser
+    ? {
+        id: currentUserId,
+        authUserId: currentUser.id,
+        name: currentUser.name,
+        email: currentUser.email,
+        avatarColor: pickAvatarColor(currentUser.email),
+        avatarUrl: currentUser.avatarUrl ?? null,
+        role: "owner",
+      }
+    : {
+        id: currentUserId,
+        name: "You",
+        email: "you@momentum.app",
+        avatarColor: pickAvatarColor(currentUserId),
+        role: "owner",
+      };
   const alex: Member = {
     id: nanoid(8),
     name: "Alex Rivera",
@@ -231,20 +247,30 @@ export const useStore = create<State & Actions>()(
     (set, get) => ({
       boards: [],
       currentUserId: "",
+      currentUser: null,
       hydrated: false,
       loading: false,
       syncError: null,
+
+      setCurrentUser: (user) => {
+        set({
+          currentUser: user,
+          currentUserId: user?.id ?? get().currentUserId,
+        });
+      },
 
       setHydrated: async () => {
         if (get().hydrated || get().loading) return;
         set({ loading: true, syncError: null });
         let currentUserId = get().currentUserId;
         if (!currentUserId) currentUserId = nanoid(10);
+        const user = get().currentUser;
 
         if (!isSupabaseConfigured()) {
           // Local-only fallback: keep the in-memory sample if there are no boards
           let boards = get().boards;
-          if (boards.length === 0) boards = [makeSampleBoard(currentUserId)];
+          if (boards.length === 0)
+            boards = [makeSampleBoard(currentUserId, user)];
           set({
             currentUserId,
             boards,
@@ -266,9 +292,16 @@ export const useStore = create<State & Actions>()(
           });
           return;
         }
-        if (remote.length === 0) {
-          const sample = makeSampleBoard(currentUserId);
-          set({ currentUserId, boards: [sample], hydrated: true, loading: false });
+        // Only seed when signed in — RLS rejects anon writes, so seeding
+        // would fail silently and leave the dashboard empty on every load.
+        if (remote.length === 0 && user) {
+          const sample = makeSampleBoard(currentUserId, user);
+          set({
+            currentUserId,
+            boards: [sample],
+            hydrated: true,
+            loading: false,
+          });
           fnf(seedSampleBoard(sample));
           return;
         }
@@ -283,13 +316,24 @@ export const useStore = create<State & Actions>()(
       createBoard: (name, description) => {
         const now = nowIso();
         const meId = get().currentUserId;
-        const me: Member = {
-          id: meId,
-          name: "You",
-          email: "you@momentum.app",
-          avatarColor: pickAvatarColor(meId),
-          role: "owner",
-        };
+        const user = get().currentUser;
+        const me: Member = user
+          ? {
+              id: meId,
+              authUserId: user.id,
+              name: user.name,
+              email: user.email,
+              avatarColor: pickAvatarColor(user.email),
+              avatarUrl: user.avatarUrl ?? null,
+              role: "owner",
+            }
+          : {
+              id: meId,
+              name: "You",
+              email: "you@momentum.app",
+              avatarColor: pickAvatarColor(meId),
+              role: "owner",
+            };
         const groups: Group[] = [
           { id: nanoid(8), name: "To do", color: GROUP_COLORS[0] },
           { id: nanoid(8), name: "Doing", color: GROUP_COLORS[2] },

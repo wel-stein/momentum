@@ -27,6 +27,8 @@ interface MemberRow {
   name: string;
   email: string;
   avatar_color: string | null;
+  avatar_url: string | null;
+  auth_user_id: string | null;
   role: string;
 }
 interface TaskRow {
@@ -57,7 +59,7 @@ export async function fetchAllBoards(): Promise<Board[] | null> {
     .select(
       `id, name, description, emoji, view, share_token, created_at, updated_at,
        board_groups (id, board_id, name, color, collapsed, position),
-       board_members (id, board_id, name, email, avatar_color, role),
+       board_members (id, board_id, name, email, avatar_color, avatar_url, auth_user_id, role),
        tasks (id, board_id, group_id, title, description, status, priority,
               start_date, due_date, tags, created_at, updated_at,
               task_assignees (member_id))`,
@@ -89,6 +91,8 @@ function rowToBoard(b: BoardRow & {
     name: m.name,
     email: m.email,
     avatarColor: m.avatar_color ?? "#3a5dff",
+    avatarUrl: m.avatar_url ?? null,
+    authUserId: m.auth_user_id ?? null,
     role: (m.role as Member["role"]) ?? "member",
   }));
   const tasks: Task[] = (b.tasks ?? []).map((t) => ({
@@ -130,7 +134,7 @@ export async function fetchBoardByToken(
     .select(
       `id, name, description, emoji, view, share_token, created_at, updated_at,
        board_groups (id, board_id, name, color, collapsed, position),
-       board_members (id, board_id, name, email, avatar_color, role),
+       board_members (id, board_id, name, email, avatar_color, avatar_url, auth_user_id, role),
        tasks (id, board_id, group_id, title, description, status, priority,
               start_date, due_date, tags, created_at, updated_at,
               task_assignees (member_id))`,
@@ -204,6 +208,8 @@ export async function upsertMember(boardId: string, member: Member) {
     name: member.name,
     email: member.email,
     avatar_color: member.avatarColor,
+    avatar_url: member.avatarUrl ?? null,
+    auth_user_id: member.authUserId ?? null,
     role: member.role,
   });
   logErr("upsertMember", error);
