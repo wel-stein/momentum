@@ -7,14 +7,14 @@ export function SyncBanner() {
   const error = useStore((s) => s.syncError);
   if (!error) return null;
   return (
-    <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
+    <div className="border-b border-amber-500/20 bg-amber-500/[0.07] px-4 py-1.5 text-[11px] text-amber-200">
       <div className="mx-auto flex max-w-7xl items-start gap-2">
-        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-        <div>
+        <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+        <div className="leading-tight">
           <span className="font-medium">Supabase sync issue:</span> {error}{" "}
-          <span className="text-amber-700">
+          <span className="text-amber-200/70">
             Open the Supabase SQL Editor and run{" "}
-            <code className="rounded bg-amber-100 px-1 py-0.5">
+            <code className="rounded bg-amber-500/10 px-1 py-0.5 font-mono text-[10px]">
               supabase/migrations/0001_initial.sql
             </code>
             , then reload.

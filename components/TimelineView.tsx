@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import type { Board, Task } from "@/lib/types";
 import { STATUSES, PRIORITY_META } from "@/lib/types";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDateSmart, taskCode } from "@/lib/utils";
 
 interface Props {
   board: Board;
@@ -12,7 +12,17 @@ interface Props {
 }
 
 const DAY_MS = 1000 * 60 * 60 * 24;
-const COL_PX = 56;
+const COL_PX = 52;
+const NAME_COL = 240;
+const HEADER_PX = 56;
+
+const STATUS_BG: Record<string, string> = {
+  not_started: "bg-zinc-600",
+  in_progress: "bg-amber-500/80",
+  stuck: "bg-rose-500/80",
+  review: "bg-violet-500/80",
+  done: "bg-emerald-500/80",
+};
 
 export function TimelineView({ board, onOpenTask, filter }: Props) {
   const allTasks = board.tasks.filter(filter);
@@ -60,17 +70,20 @@ export function TimelineView({ board, onOpenTask, filter }: Props) {
   const undatedCount = allTasks.length - dated.length;
 
   return (
-    <div className="px-6 py-4">
-      <div className="overflow-x-auto rounded-lg border bg-white shadow-sm scrollbar-thin">
-        <div className="relative" style={{ width: widthPx + 240 }}>
-          <div className="sticky top-0 z-10 flex border-b bg-slate-50">
-            <div className="sticky left-0 z-20 w-60 shrink-0 border-r bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+    <div className="px-5 py-4">
+      <div className="overflow-x-auto rounded-md border border-white/[0.07] bg-ink-900 scrollbar-thin">
+        <div className="relative" style={{ width: widthPx + NAME_COL }}>
+          <div
+            className="sticky top-0 z-10 flex border-b border-white/[0.06] bg-ink-900"
+            style={{ height: HEADER_PX }}
+          >
+            <div
+              className="sticky left-0 z-20 shrink-0 border-r border-white/[0.06] bg-ink-900 px-3 py-2 text-[10px] font-medium uppercase tracking-wider text-zinc-500"
+              style={{ width: NAME_COL }}
+            >
               Task
             </div>
-            <div
-              className="relative flex"
-              style={{ width: widthPx }}
-            >
+            <div className="relative flex" style={{ width: widthPx }}>
               {days.map((d, i) => {
                 const date = new Date(d);
                 const isMonthStart = date.getDate() === 1 || i === 0;
@@ -80,23 +93,25 @@ export function TimelineView({ board, onOpenTask, filter }: Props) {
                     key={d}
                     style={{ width: COL_PX }}
                     className={cn(
-                      "shrink-0 border-r text-center text-[10px]",
-                      isWeekend && "bg-slate-100/60",
+                      "shrink-0 border-r border-white/[0.04] text-center",
+                      isWeekend && "bg-white/[0.015]",
                     )}
                   >
                     {isMonthStart && (
-                      <div className="border-b bg-slate-100 py-0.5 text-[10px] font-semibold text-slate-600">
+                      <div className="border-b border-white/[0.06] bg-white/[0.02] py-0.5 text-[10px] font-medium text-zinc-400">
                         {date.toLocaleDateString(undefined, {
                           month: "short",
                           year: "numeric",
                         })}
                       </div>
                     )}
-                    <div className="py-1.5 text-slate-500">
-                      <div className="text-[10px] uppercase">
-                        {date.toLocaleDateString(undefined, { weekday: "short" })}
+                    <div className="py-1.5 text-[10px] tabular-nums text-zinc-500">
+                      <div className="uppercase">
+                        {date.toLocaleDateString(undefined, {
+                          weekday: "short",
+                        })}
                       </div>
-                      <div className="font-semibold text-slate-700">
+                      <div className="font-medium text-zinc-300">
                         {date.getDate()}
                       </div>
                     </div>
@@ -110,15 +125,15 @@ export function TimelineView({ board, onOpenTask, filter }: Props) {
             const tasks = dated.filter((t) => t.groupId === g.id);
             if (tasks.length === 0) return null;
             return (
-              <div key={g.id} className="border-b last:border-b-0">
+              <div key={g.id} className="border-b border-white/[0.06] last:border-b-0">
                 <div
-                  className="sticky left-0 z-10 flex items-center gap-2 border-b bg-white px-3 py-1.5"
-                  style={{ borderLeft: `4px solid ${g.color}` }}
+                  className="sticky left-0 z-10 flex items-center gap-2 border-b border-white/[0.04] bg-ink-900 px-3 py-1.5"
+                  style={{ borderLeft: `2px solid ${g.color}` }}
                 >
-                  <span className="text-sm font-semibold text-slate-800">
+                  <span className="text-[12px] font-medium tracking-tight text-zinc-200">
                     {g.name}
                   </span>
-                  <span className="text-xs text-slate-400">
+                  <span className="font-mono text-[10px] text-zinc-500">
                     {tasks.length}
                   </span>
                 </div>
@@ -139,25 +154,26 @@ export function TimelineView({ board, onOpenTask, filter }: Props) {
             <div
               className="pointer-events-none absolute z-0"
               style={{
-                left: 240 + todayLeft,
-                top: 48,
+                left: NAME_COL + todayLeft,
+                top: HEADER_PX,
                 bottom: 0,
               }}
             >
-              <div className="h-full w-px bg-brand-500/60" />
+              <div className="h-full w-px bg-brand-400/70" />
+              <div className="absolute -top-1 -left-1 h-2 w-2 rounded-full bg-brand-400" />
             </div>
           )}
         </div>
       </div>
 
       {undatedCount > 0 && (
-        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          {undatedCount} task{undatedCount === 1 ? " is" : "s are"} missing
-          a start or due date and won't appear on the timeline.
+        <div className="mt-3 rounded-md border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2 text-[11px] text-amber-200">
+          {undatedCount} task{undatedCount === 1 ? " is" : "s are"} missing a
+          start or due date and won't appear on the timeline.
         </div>
       )}
       {dated.length === 0 && (
-        <div className="mt-3 rounded-md border border-dashed bg-white px-4 py-6 text-center text-sm text-slate-500">
+        <div className="mt-3 rounded-md border border-dashed border-white/10 px-4 py-6 text-center text-[12px] text-zinc-500">
           Add start and due dates to tasks to see them on the timeline.
         </div>
       )}
@@ -178,32 +194,43 @@ function Row({
 }) {
   const s = task.startDate ? new Date(task.startDate).getTime() : null;
   const e = task.dueDate ? new Date(task.dueDate).getTime() : null;
-  const start = s ?? e!;
-  const end = e ?? s!;
+  const start = s ?? (e as number);
+  const end = e ?? (s as number);
   const left = ((start - startMs) / DAY_MS) * COL_PX;
   const span = Math.max(1, (end - start) / DAY_MS + 1);
-  const width = span * COL_PX - 4;
+  const width = Math.max(COL_PX - 4, span * COL_PX - 4);
   const status = STATUSES.find((x) => x.key === task.status) ?? STATUSES[0];
+  const tone = STATUS_BG[status.key] ?? "bg-zinc-600";
 
   return (
     <div className="flex">
-      <div className="sticky left-0 z-10 w-60 shrink-0 border-r bg-white px-3 py-2">
-        <div className="truncate text-sm text-slate-800">{task.title}</div>
-        <div className="text-[11px] text-slate-400">
-          {formatDate(task.startDate)}
+      <div
+        className="sticky left-0 z-10 shrink-0 border-r border-white/[0.06] bg-ink-900 px-3 py-1.5"
+        style={{ width: NAME_COL }}
+      >
+        <div className="flex items-center gap-1.5">
+          <span className="font-mono text-[10px] text-zinc-500">
+            {taskCode(task.id)}
+          </span>
+        </div>
+        <div className="truncate text-[12px] text-zinc-200">{task.title}</div>
+        <div className="text-[10px] tabular-nums text-zinc-500">
+          {formatDateSmart(task.startDate)}
           {task.startDate && task.dueDate && " → "}
-          {formatDate(task.dueDate)}
+          {formatDateSmart(task.dueDate)}
         </div>
       </div>
-      <div className="relative" style={{ width: widthPx, height: 52 }}>
+      <div className="relative" style={{ width: widthPx, height: 48 }}>
         <button
           onClick={onOpen}
-          className="absolute top-3 flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-white shadow-sm transition hover:brightness-110"
+          className={cn(
+            "group absolute top-3 flex h-6 items-center gap-1 rounded px-2 text-[11px] font-medium text-white/95 shadow-sm transition hover:brightness-110",
+            tone,
+          )}
           style={{
             left: left + 2,
             width,
-            backgroundColor: status.color,
-            borderLeft: `3px solid ${PRIORITY_META[task.priority].color}`,
+            borderLeft: `2px solid ${PRIORITY_META[task.priority].color}`,
           }}
           title={task.title}
         >

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Trash2, X } from "lucide-react";
 import type { Board, Task } from "@/lib/types";
 import { useStore } from "@/lib/store";
+import { taskCode } from "@/lib/utils";
 import { Modal } from "./Modal";
 import { StatusPill } from "./StatusPill";
 import { PriorityPill } from "./PriorityPill";
@@ -51,14 +52,14 @@ export function TaskModal({ board, taskId, onClose }: Props) {
                   onClose();
                 }
               }}
-              className="inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-sm text-rose-600 hover:bg-rose-50"
+              className="inline-flex items-center gap-1 rounded px-2.5 py-1 text-[12px] text-rose-400 hover:bg-rose-500/10"
             >
-              <Trash2 className="h-4 w-4" /> Delete
+              <Trash2 className="h-3.5 w-3.5" /> Delete
             </button>
           )}
           <button
             onClick={onClose}
-            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+            className="rounded bg-white/[0.06] px-3 py-1 text-[12px] font-medium text-zinc-200 hover:bg-white/[0.1]"
           >
             Close
           </button>
@@ -66,15 +67,18 @@ export function TaskModal({ board, taskId, onClose }: Props) {
       }
     >
       <div className="space-y-4">
+        <div className="flex items-center gap-2 text-[11px] tracking-tight text-zinc-500">
+          <span className="font-mono">{taskCode(task.id)}</span>
+        </div>
         <input
           value={task.title}
           onChange={(e) => patch({ title: e.target.value })}
           readOnly={readOnly}
-          className="w-full rounded-md border-0 px-0 text-xl font-semibold focus:outline-none focus:ring-0"
+          className="w-full rounded border-0 bg-transparent px-0 text-lg font-medium tracking-tight text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-0"
           placeholder="Task title"
         />
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-[100px_1fr] gap-x-4 gap-y-2 text-[12px]">
           <Field label="Group">
             <select
               value={task.groupId}
@@ -83,7 +87,7 @@ export function TaskModal({ board, taskId, onClose }: Props) {
                 if (readOnly) return;
                 moveTask(board.id, task.id, e.target.value);
               }}
-              className="w-full rounded-md border px-2 py-1.5 text-sm focus:border-brand-500 focus:outline-none disabled:bg-slate-50"
+              className="rounded border border-white/10 bg-ink-900 px-2 py-1 text-[12px] text-zinc-200 focus:border-brand-500/40 focus:outline-none disabled:opacity-60"
             >
               {board.groups.map((g) => (
                 <option key={g.id} value={g.id}>
@@ -116,7 +120,7 @@ export function TaskModal({ board, taskId, onClose }: Props) {
               onChange={(ids) => patch({ assigneeIds: ids })}
             />
           </Field>
-          <Field label="Start date">
+          <Field label="Start">
             <input
               type="date"
               value={task.startDate ? task.startDate.slice(0, 10) : ""}
@@ -128,10 +132,10 @@ export function TaskModal({ board, taskId, onClose }: Props) {
                     : undefined,
                 })
               }
-              className="w-full rounded-md border px-2 py-1.5 text-sm focus:border-brand-500 focus:outline-none read-only:bg-slate-50"
+              className="rounded border border-white/10 bg-ink-900 px-2 py-1 text-[12px] tabular-nums text-zinc-200 focus:border-brand-500/40 focus:outline-none read-only:opacity-60"
             />
           </Field>
-          <Field label="Due date">
+          <Field label="Due">
             <input
               type="date"
               value={task.dueDate ? task.dueDate.slice(0, 10) : ""}
@@ -143,65 +147,67 @@ export function TaskModal({ board, taskId, onClose }: Props) {
                     : undefined,
                 })
               }
-              className="w-full rounded-md border px-2 py-1.5 text-sm focus:border-brand-500 focus:outline-none read-only:bg-slate-50"
+              className="rounded border border-white/10 bg-ink-900 px-2 py-1 text-[12px] tabular-nums text-zinc-200 focus:border-brand-500/40 focus:outline-none read-only:opacity-60"
             />
+          </Field>
+          <Field label="Tags">
+            <div className="flex flex-wrap items-center gap-1">
+              {task.tags.map((t) => (
+                <span
+                  key={t}
+                  className="inline-flex items-center gap-1 rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[10px] text-zinc-300"
+                >
+                  {t}
+                  {!readOnly && (
+                    <button
+                      onClick={() =>
+                        patch({ tags: task.tags.filter((x) => x !== t) })
+                      }
+                      aria-label={`Remove ${t}`}
+                      className="text-zinc-500 hover:text-rose-400"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  )}
+                </span>
+              ))}
+              {!readOnly && (
+                <input
+                  value={tagDraft}
+                  onChange={(e) => setTagDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && tagDraft.trim()) {
+                      e.preventDefault();
+                      if (!task.tags.includes(tagDraft.trim())) {
+                        patch({ tags: [...task.tags, tagDraft.trim()] });
+                      }
+                      setTagDraft("");
+                    }
+                  }}
+                  placeholder="Add tag…"
+                  className="min-w-[100px] flex-1 rounded border-0 bg-transparent px-1 py-0.5 text-[12px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-0"
+                />
+              )}
+              {readOnly && task.tags.length === 0 && (
+                <span className="text-[11px] text-zinc-600">No tags</span>
+              )}
+            </div>
           </Field>
         </div>
 
-        <Field label="Tags">
-          <div className="flex flex-wrap items-center gap-1.5">
-            {task.tags.map((t) => (
-              <span
-                key={t}
-                className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
-              >
-                {t}
-                {!readOnly && (
-                  <button
-                    onClick={() =>
-                      patch({ tags: task.tags.filter((x) => x !== t) })
-                    }
-                    aria-label={`Remove ${t}`}
-                    className="text-slate-400 hover:text-rose-600"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                )}
-              </span>
-            ))}
-            {!readOnly && (
-              <input
-                value={tagDraft}
-                onChange={(e) => setTagDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && tagDraft.trim()) {
-                    e.preventDefault();
-                    if (!task.tags.includes(tagDraft.trim())) {
-                      patch({ tags: [...task.tags, tagDraft.trim()] });
-                    }
-                    setTagDraft("");
-                  }
-                }}
-                placeholder="Add tag…"
-                className="min-w-[100px] flex-1 rounded-md border-0 px-1 py-0.5 text-sm focus:outline-none focus:ring-0"
-              />
-            )}
-            {readOnly && task.tags.length === 0 && (
-              <span className="text-xs text-slate-400">No tags</span>
-            )}
+        <div>
+          <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+            Description
           </div>
-        </Field>
-
-        <Field label="Description">
           <textarea
-            rows={4}
+            rows={5}
             value={task.description ?? ""}
             readOnly={readOnly}
             onChange={(e) => patch({ description: e.target.value })}
             placeholder={readOnly ? "No description" : "Add more details…"}
-            className="w-full resize-y rounded-md border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 read-only:bg-slate-50"
+            className="w-full resize-y rounded border border-white/10 bg-ink-900 px-3 py-2 text-[13px] leading-relaxed text-zinc-200 placeholder:text-zinc-600 focus:border-brand-500/40 focus:outline-none read-only:opacity-80"
           />
-        </Field>
+        </div>
       </div>
     </Modal>
   );
@@ -215,11 +221,11 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div>
-      <div className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">
+    <>
+      <div className="flex items-center text-[11px] uppercase tracking-wider text-zinc-500">
         {label}
       </div>
-      {children}
-    </div>
+      <div className="flex items-center">{children}</div>
+    </>
   );
 }

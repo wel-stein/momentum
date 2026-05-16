@@ -8,22 +8,31 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Linear-dense palette
+        ink: {
+          950: "#0a0a0b", // app bg
+          900: "#101013", // panel bg
+          850: "#131316", // surface
+          800: "#1a1a1f", // surface elevated
+          750: "#222227", // hover surface
+        },
         brand: {
-          50: "#eef4ff",
-          100: "#dbe6ff",
-          200: "#bdd1ff",
-          300: "#92b1ff",
-          400: "#5e85ff",
-          500: "#3a5dff",
-          600: "#2540f5",
-          700: "#1d31dc",
-          800: "#1e2bb1",
-          900: "#1f2a8b",
+          50: "#f5f3ff",
+          100: "#ede9fe",
+          200: "#ddd6fe",
+          300: "#c4b5fd",
+          400: "#a78bfa",
+          500: "#8b5cf6",
+          600: "#7c3aed",
+          700: "#6d28d9",
+          800: "#5b21b6",
+          900: "#4c1d95",
         },
       },
       fontFamily: {
         sans: [
           "ui-sans-serif",
+          "Inter",
           "system-ui",
           "-apple-system",
           "Segoe UI",
@@ -31,6 +40,14 @@ const config: Config = {
           "Helvetica",
           "Arial",
           "sans-serif",
+        ],
+        mono: [
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "Monaco",
+          "Consolas",
+          "monospace",
         ],
       },
     },

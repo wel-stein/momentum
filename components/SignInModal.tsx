@@ -34,7 +34,7 @@ export function SignInModal({ open, onClose }: Props) {
     <>
       <Modal open={open} onClose={onClose} title="Sign in to Momentum" size="sm">
         <div className="space-y-3">
-          <p className="text-sm text-slate-600">
+          <p className="text-[12px] leading-relaxed text-zinc-400">
             Sign in with your Google account to create boards, add tasks, and
             invite collaborators. You can still browse and view shared boards
             without an account.
@@ -42,7 +42,7 @@ export function SignInModal({ open, onClose }: Props) {
           <button
             onClick={onClick}
             disabled={busy}
-            className="flex w-full items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] font-medium text-zinc-100 transition hover:bg-white/[0.08] disabled:opacity-60"
           >
             {busy ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -52,13 +52,13 @@ export function SignInModal({ open, onClose }: Props) {
             Continue with Google
           </button>
           {err && (
-            <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+            <div className="rounded border border-rose-500/30 bg-rose-500/[0.06] px-3 py-2 text-[11px] text-rose-300">
               {err}
             </div>
           )}
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-zinc-500">
             Tip: if your browser shows a Google account prompt at the top of
-            the page, you can click it to sign in instantly.
+            the page, click it to sign in instantly.
           </p>
         </div>
       </Modal>

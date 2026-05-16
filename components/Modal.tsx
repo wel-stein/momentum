@@ -40,30 +40,34 @@ export function Modal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
       <div
+        role="dialog"
+        aria-modal="true"
         className={cn(
-          "relative z-10 w-full overflow-hidden rounded-xl bg-white shadow-2xl",
+          "relative z-10 w-full overflow-hidden rounded-lg border border-white/10 bg-ink-850 shadow-2xl shadow-black/60",
           SIZE[size],
         )}
       >
         {title && (
-          <div className="flex items-center justify-between border-b px-5 py-3">
-            <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+          <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
+            <h3 className="text-sm font-medium tracking-tight text-zinc-100">
+              {title}
+            </h3>
             <button
               onClick={onClose}
-              className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+              className="rounded p-1 text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200"
               aria-label="Close"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </button>
           </div>
         )}
         <div className="px-5 py-4">{children}</div>
         {footer && (
-          <div className="flex items-center justify-end gap-2 border-t bg-slate-50 px-5 py-3">
+          <div className="flex items-center justify-end gap-2 border-t border-white/10 bg-ink-900/60 px-5 py-3">
             {footer}
           </div>
         )}

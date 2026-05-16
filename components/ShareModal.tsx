@@ -37,7 +37,7 @@ export function ShareModal({ board, open, onClose }: Props) {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
     } catch {
-      // ignore — some browsers block in non-secure contexts
+      // ignored
     }
   };
 
@@ -50,22 +50,22 @@ export function ShareModal({ board, open, onClose }: Props) {
       footer={
         <button
           onClick={onClose}
-          className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+          className="rounded bg-white/[0.06] px-3 py-1 text-[12px] font-medium text-zinc-200 hover:bg-white/[0.1]"
         >
           Done
         </button>
       }
     >
-      <div className="space-y-4">
-        <div className="flex items-start gap-3 rounded-lg border bg-slate-50 p-3">
-          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-100 text-brand-700">
-            <Eye className="h-4 w-4" />
+      <div className="space-y-3">
+        <div className="flex items-start gap-3 rounded border border-white/[0.08] bg-white/[0.02] p-3">
+          <div className="grid h-7 w-7 shrink-0 place-items-center rounded bg-brand-500/15 text-brand-300">
+            <Eye className="h-3.5 w-3.5" />
           </div>
           <div>
-            <div className="text-sm font-semibold text-slate-900">
+            <div className="text-[13px] font-medium text-zinc-100">
               View-only link
             </div>
-            <p className="mt-0.5 text-xs text-slate-600">
+            <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-500">
               Anyone with the link can see this board and its tasks. They
               cannot edit, add, or delete anything.
             </p>
@@ -75,42 +75,42 @@ export function ShareModal({ board, open, onClose }: Props) {
         {token ? (
           <>
             <div>
-              <div className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">
+              <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
                 Link
               </div>
               <div className="flex gap-2">
-                <div className="flex flex-1 items-center gap-2 truncate rounded-md border bg-white px-3 py-2 text-sm text-slate-700">
-                  <Link2 className="h-4 w-4 shrink-0 text-slate-400" />
+                <div className="flex flex-1 items-center gap-2 truncate rounded border border-white/10 bg-ink-900 px-2.5 py-1.5 font-mono text-[11px] text-zinc-300">
+                  <Link2 className="h-3 w-3 shrink-0 text-zinc-500" />
                   <span className="truncate" title={shareUrl}>
                     {shareUrl}
                   </span>
                 </div>
                 <button
                   onClick={onCopy}
-                  className="inline-flex items-center gap-1 rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700"
+                  className="inline-flex items-center gap-1 rounded bg-brand-500 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-brand-400"
                 >
-                  <Copy className="h-3.5 w-3.5" />
-                  {copied ? "Copied!" : "Copy"}
+                  <Copy className="h-3 w-3" />
+                  {copied ? "Copied" : "Copy"}
                 </button>
               </div>
             </div>
-            <div className="flex items-center justify-between rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+            <div className="flex items-center justify-between rounded border border-rose-500/20 bg-rose-500/[0.04] px-3 py-2 text-[11px] text-rose-200">
               <span>Revoking the link makes it stop working immediately.</span>
               <button
                 onClick={() => {
                   if (confirm("Revoke this share link?"))
                     disableSharing(board.id);
                 }}
-                className="inline-flex items-center gap-1 rounded-md border border-rose-300 bg-white px-2 py-1 text-rose-700 hover:bg-rose-100"
+                className="inline-flex items-center gap-1 rounded border border-rose-500/30 px-2 py-0.5 text-rose-300 hover:bg-rose-500/10"
               >
-                <ShieldOff className="h-3.5 w-3.5" /> Revoke
+                <ShieldOff className="h-3 w-3" /> Revoke
               </button>
             </div>
           </>
         ) : (
           <button
             onClick={() => enableSharing(board.id)}
-            className="w-full rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700"
+            className="w-full rounded bg-brand-500 px-3 py-2 text-[12px] font-medium text-white hover:bg-brand-400"
           >
             Create view-only link
           </button>

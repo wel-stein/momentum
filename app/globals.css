@@ -8,10 +8,22 @@
     height: 100%;
   }
   body {
-    @apply bg-slate-50 text-slate-900 antialiased;
+    @apply bg-ink-950 text-zinc-100 antialiased;
+    font-feature-settings:
+      "cv11",
+      "ss01",
+      "ss03";
   }
   * {
-    @apply border-slate-200;
+    @apply border-white/[0.07];
+  }
+  ::selection {
+    background: rgba(139, 92, 246, 0.35);
+  }
+  input,
+  textarea,
+  select {
+    color-scheme: dark;
   }
 }
 
@@ -21,7 +33,10 @@
     width: 10px;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    @apply bg-slate-300 rounded-full;
+    @apply rounded-full bg-white/10;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-white/20;
   }
   .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;

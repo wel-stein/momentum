@@ -11,15 +11,15 @@ interface AvatarProps {
 }
 
 const SIZE: Record<NonNullable<AvatarProps["size"]>, string> = {
-  xs: "h-5 w-5 text-[10px]",
-  sm: "h-6 w-6 text-[11px]",
-  md: "h-8 w-8 text-xs",
-  lg: "h-10 w-10 text-sm",
+  xs: "h-5 w-5 text-[9px]",
+  sm: "h-6 w-6 text-[10px]",
+  md: "h-7 w-7 text-[11px]",
+  lg: "h-9 w-9 text-xs",
 };
 
 export function Avatar({ member, size = "sm", className, title }: AvatarProps) {
   const cls = cn(
-    "inline-flex items-center justify-center rounded-full font-semibold text-white ring-2 ring-white overflow-hidden",
+    "inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-white ring-2 ring-ink-850",
     SIZE[size],
     className,
   );
@@ -60,14 +60,14 @@ export function AvatarStack({
   const shown = members.slice(0, max);
   const overflow = members.length - shown.length;
   return (
-    <div className="flex -space-x-2">
+    <div className="flex -space-x-1.5">
       {shown.map((m) => (
         <Avatar key={m.id} member={m} size={size} />
       ))}
       {overflow > 0 && (
         <span
           className={cn(
-            "inline-flex items-center justify-center rounded-full bg-slate-200 text-slate-700 font-semibold ring-2 ring-white",
+            "inline-flex items-center justify-center rounded-full bg-ink-750 text-zinc-300 font-semibold ring-2 ring-ink-850",
             SIZE[size],
           )}
         >

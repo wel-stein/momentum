@@ -2,21 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  Plus,
-  Trash2,
-  Layout,
-  LayoutGrid,
-  Calendar,
-  Users,
-} from "lucide-react";
+import { Plus, Trash2, LayoutGrid, Layout, Calendar } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Modal } from "./Modal";
 import { AvatarStack } from "./Avatar";
 import { SyncBanner } from "./SyncBanner";
 import { UserMenu } from "./UserMenu";
+import { Kbd } from "./Kbd";
 import { useAuth, useUser } from "./AuthProvider";
-import { formatDateLong } from "@/lib/utils";
+import { formatDateSmart, taskCode } from "@/lib/utils";
 
 export function HomeShell() {
   const hydrated = useStore((s) => s.hydrated);
@@ -31,16 +25,32 @@ export function HomeShell() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
-  // Hydrate once auth is ready so the store knows whether to seed
-  // (skipped for anonymous users, who can't write to Supabase).
   useEffect(() => {
     if (!auth.ready) return;
     void setHydrated();
   }, [setHydrated, auth.ready]);
 
+  // C → new board (signed-in only)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!user) return;
+      if (e.target instanceof HTMLElement) {
+        const tag = e.target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable)
+          return;
+      }
+      if (e.key === "c" || e.key === "C") {
+        e.preventDefault();
+        setShowNew(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [user]);
+
   if (!auth.ready || !hydrated) {
     return (
-      <div className="flex h-screen items-center justify-center text-slate-400">
+      <div className="flex h-screen items-center justify-center text-zinc-600 text-sm">
         Loading…
       </div>
     );
@@ -49,26 +59,28 @@ export function HomeShell() {
   return (
     <div className="min-h-screen">
       <SyncBanner />
-      <header className="border-b bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2">
-            <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-white">
-              <Layout className="h-4 w-4" />
+      <header className="border-b border-white/[0.06]">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
+          <div className="flex items-center gap-2.5">
+            <div className="grid h-6 w-6 place-items-center rounded bg-brand-500 text-white">
+              <span className="text-[11px] font-bold tracking-tight">M</span>
             </div>
-            <div>
-              <div className="text-base font-semibold">Momentum</div>
-              <div className="text-[11px] text-slate-500">
-                Boards that move with you
-              </div>
+            <div className="text-[13px] font-medium tracking-tight text-zinc-100">
+              Momentum
             </div>
+            <span className="font-mono text-[10px] text-zinc-600">v0.1</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {user && (
               <button
                 onClick={() => setShowNew(true)}
-                className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
+                className="inline-flex items-center gap-1.5 rounded bg-brand-500 px-2.5 py-1 text-[12px] font-medium text-white hover:bg-brand-400"
               >
-                <Plus className="h-4 w-4" /> New board
+                <Plus className="h-3 w-3" />
+                New board
+                <Kbd className="ml-1 border-white/20 bg-white/10 text-white/80">
+                  C
+                </Kbd>
               </button>
             )}
             <UserMenu />
@@ -77,39 +89,50 @@ export function HomeShell() {
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">Your boards</h1>
-          <p className="text-sm text-slate-500">
-            {boards.length} board{boards.length === 1 ? "" : "s"}
-          </p>
+        <div className="mb-5 flex items-end justify-between">
+          <div>
+            <h1 className="text-xl font-medium tracking-tight text-zinc-100">
+              Your boards
+            </h1>
+            <p className="mt-0.5 text-[12px] text-zinc-500">
+              {boards.length} board{boards.length === 1 ? "" : "s"}
+            </p>
+          </div>
         </div>
 
         {boards.length === 0 ? (
-          <EmptyState
-            onCreate={user ? () => setShowNew(true) : undefined}
-          />
+          <EmptyState onCreate={user ? () => setShowNew(true) : undefined} />
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {boards.map((b) => {
               const taskCount = b.tasks.length;
-              const doneCount = b.tasks.filter((t) => t.status === "done").length;
+              const doneCount = b.tasks.filter(
+                (t) => t.status === "done",
+              ).length;
+              const progress =
+                taskCount === 0 ? 0 : Math.round((doneCount / taskCount) * 100);
               return (
                 <div
                   key={b.id}
-                  className="group relative overflow-hidden rounded-xl border bg-white p-5 shadow-sm transition hover:shadow-md"
+                  className="group relative overflow-hidden rounded-md border border-white/[0.07] bg-ink-850 transition-colors hover:border-white/[0.14]"
                 >
-                  <Link href={`/board/${b.id}`} className="block">
+                  <Link href={`/board/${b.id}`} className="block p-3">
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3">
-                        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-slate-100 text-xl">
+                      <div className="flex min-w-0 items-start gap-2.5">
+                        <div className="grid h-7 w-7 shrink-0 place-items-center rounded bg-white/[0.05] text-base">
                           {b.emoji}
                         </div>
                         <div className="min-w-0">
-                          <div className="truncate font-semibold text-slate-900">
-                            {b.name}
+                          <div className="flex items-center gap-1.5">
+                            <span className="truncate text-[13px] font-medium tracking-tight text-zinc-100">
+                              {b.name}
+                            </span>
+                            <span className="font-mono text-[10px] text-zinc-600">
+                              {taskCode(b.id)}
+                            </span>
                           </div>
                           {b.description && (
-                            <div className="mt-0.5 truncate text-xs text-slate-500">
+                            <div className="mt-0.5 line-clamp-1 text-[11px] text-zinc-500">
                               {b.description}
                             </div>
                           )}
@@ -117,15 +140,20 @@ export function HomeShell() {
                       </div>
                       <ViewIcon view={b.view} />
                     </div>
-                    <div className="mt-4 flex items-center justify-between">
-                      <div className="text-xs text-slate-500">
-                        {taskCount} task{taskCount === 1 ? "" : "s"} ·{" "}
-                        {doneCount} done
-                      </div>
-                      <AvatarStack members={b.members} max={3} size="sm" />
+                    <div className="mt-3 h-[3px] overflow-hidden rounded-full bg-white/[0.05]">
+                      <div
+                        className="h-full bg-brand-500/70"
+                        style={{ width: `${progress}%` }}
+                      />
                     </div>
-                    <div className="mt-2 text-[11px] text-slate-400">
-                      Updated {formatDateLong(b.updatedAt)}
+                    <div className="mt-2 flex items-center justify-between text-[11px] text-zinc-500">
+                      <div className="tabular-nums">
+                        {doneCount} / {taskCount} done
+                      </div>
+                      <AvatarStack members={b.members} max={3} size="xs" />
+                    </div>
+                    <div className="mt-1 text-[10px] tabular-nums text-zinc-600">
+                      Updated {formatDateSmart(b.updatedAt)}
                     </div>
                   </Link>
                   {user && (
@@ -139,9 +167,9 @@ export function HomeShell() {
                         }
                       }}
                       aria-label="Delete board"
-                      className="absolute right-3 top-3 hidden rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 group-hover:block"
+                      className="absolute right-2 top-2 hidden rounded p-1 text-zinc-600 hover:bg-rose-500/10 hover:text-rose-400 group-hover:block"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-3 w-3" />
                     </button>
                   )}
                 </div>
@@ -159,20 +187,23 @@ export function HomeShell() {
           <>
             <button
               onClick={() => setShowNew(false)}
-              className="rounded-md px-3 py-1.5 text-sm hover:bg-slate-100"
+              className="rounded px-3 py-1 text-[12px] text-zinc-300 hover:bg-white/[0.06]"
             >
               Cancel
             </button>
             <button
               onClick={() => {
                 if (!name.trim()) return;
-                const id = createBoard(name.trim(), description.trim() || undefined);
+                const id = createBoard(
+                  name.trim(),
+                  description.trim() || undefined,
+                );
                 setName("");
                 setDescription("");
                 setShowNew(false);
                 window.location.href = `/board/${id}`;
               }}
-              className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+              className="rounded bg-brand-500 px-3 py-1 text-[12px] font-medium text-white hover:bg-brand-400"
             >
               Create board
             </button>
@@ -181,7 +212,7 @@ export function HomeShell() {
       >
         <div className="space-y-3">
           <label className="block">
-            <div className="mb-1 text-xs font-medium text-slate-600">
+            <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
               Board name
             </div>
             <input
@@ -189,11 +220,11 @@ export function HomeShell() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Product launch"
-              className="w-full rounded-md border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+              className="w-full rounded border border-white/10 bg-ink-900 px-2.5 py-1.5 text-[13px] text-zinc-100 placeholder:text-zinc-600 focus:border-brand-500/40 focus:outline-none"
             />
           </label>
           <label className="block">
-            <div className="mb-1 text-xs font-medium text-slate-600">
+            <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
               Description (optional)
             </div>
             <textarea
@@ -201,7 +232,7 @@ export function HomeShell() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What is this board about?"
-              className="w-full resize-none rounded-md border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+              className="w-full resize-none rounded border border-white/10 bg-ink-900 px-2.5 py-1.5 text-[13px] text-zinc-200 placeholder:text-zinc-600 focus:border-brand-500/40 focus:outline-none"
             />
           </label>
         </div>
@@ -212,12 +243,12 @@ export function HomeShell() {
 
 function ViewIcon({ view }: { view: string }) {
   const map: Record<string, React.ReactNode> = {
-    kanban: <LayoutGrid className="h-4 w-4" />,
-    table: <Layout className="h-4 w-4" />,
-    timeline: <Calendar className="h-4 w-4" />,
+    kanban: <LayoutGrid className="h-3.5 w-3.5" />,
+    table: <Layout className="h-3.5 w-3.5" />,
+    timeline: <Calendar className="h-3.5 w-3.5" />,
   };
   return (
-    <span className="grid h-7 w-7 place-items-center rounded-md bg-slate-100 text-slate-500">
+    <span className="grid h-6 w-6 place-items-center rounded bg-white/[0.04] text-zinc-500">
       {map[view]}
     </span>
   );
@@ -225,12 +256,11 @@ function ViewIcon({ view }: { view: string }) {
 
 function EmptyState({ onCreate }: { onCreate?: () => void }) {
   return (
-    <div className="rounded-xl border border-dashed bg-white p-12 text-center">
-      <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-brand-50 text-brand-600">
-        <Users className="h-6 w-6" />
-      </div>
-      <h2 className="mt-3 text-lg font-semibold">No boards yet</h2>
-      <p className="mt-1 text-sm text-slate-500">
+    <div className="rounded-md border border-dashed border-white/[0.08] bg-white/[0.015] p-12 text-center">
+      <h2 className="text-[14px] font-medium tracking-tight text-zinc-200">
+        No boards yet
+      </h2>
+      <p className="mt-1 text-[12px] text-zinc-500">
         {onCreate
           ? "Create your first board to start tracking work."
           : "Sign in with Google to create your first board."}
@@ -238,9 +268,12 @@ function EmptyState({ onCreate }: { onCreate?: () => void }) {
       {onCreate && (
         <button
           onClick={onCreate}
-          className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+          className="mt-4 inline-flex items-center gap-1.5 rounded bg-brand-500 px-2.5 py-1 text-[12px] font-medium text-white hover:bg-brand-400"
         >
-          <Plus className="h-4 w-4" /> New board
+          <Plus className="h-3 w-3" /> New board
+          <Kbd className="ml-1 border-white/20 bg-white/10 text-white/80">
+            C
+          </Kbd>
         </button>
       )}
     </div>
