@@ -183,7 +183,7 @@ export function BoardShell({
                 {board.emoji}
               </button>
               {showEmoji && !readOnly && (
-                <div className="absolute left-0 top-full z-40 mt-1 grid grid-cols-6 gap-0.5 rounded-md border border-line bg-elevated p-1.5 shadow-xl shadow-black/40">
+                <div className="absolute left-0 top-full z-40 mt-1 grid grid-cols-6 gap-1 rounded-md border border-line bg-elevated p-2 shadow-xl shadow-black/40">
                   {BOARD_EMOJIS.map((e) => (
                     <button
                       key={e}
@@ -191,9 +191,9 @@ export function BoardShell({
                         updateEmoji(board.id, e);
                         setShowEmoji(false);
                       }}
-                      className="grid h-7 w-7 place-items-center rounded text-base hover:bg-hover"
+                      className="grid h-9 w-9 place-items-center overflow-hidden rounded text-xl leading-none hover:bg-hover"
                     >
-                      {e}
+                      <span className="leading-none">{e}</span>
                     </button>
                   ))}
                 </div>
