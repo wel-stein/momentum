@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, LogIn, LogOut } from "lucide-react";
+import Link from "next/link";
+import { ChevronDown, LogIn, LogOut, User as UserIcon } from "lucide-react";
 import { useUser } from "./AuthProvider";
 import { signOut } from "@/lib/auth";
 import { Avatar } from "./Avatar";
@@ -88,12 +89,19 @@ export function UserMenu() {
               </div>
             </div>
           </div>
+          <Link
+            href="/profile"
+            onClick={() => setOpen(false)}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-zinc-300 hover:bg-white/[0.06]"
+          >
+            <UserIcon className="h-3.5 w-3.5" /> Profile
+          </Link>
           <button
             onClick={async () => {
               setOpen(false);
               await signOut();
             }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-zinc-300 hover:bg-white/[0.06]"
+            className="flex w-full items-center gap-2 border-t border-white/[0.06] px-3 py-2 text-left text-[12px] text-zinc-300 hover:bg-white/[0.06]"
           >
             <LogOut className="h-3.5 w-3.5" /> Sign out
           </button>
