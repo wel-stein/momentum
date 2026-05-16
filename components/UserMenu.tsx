@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { LogIn, LogOut } from "lucide-react";
+import { ChevronDown, LogIn, LogOut } from "lucide-react";
 import { useUser } from "./AuthProvider";
 import { signOut } from "@/lib/auth";
 import { Avatar } from "./Avatar";
@@ -40,30 +40,52 @@ export function UserMenu() {
     );
   }
 
+  // First name only for the header chip — keeps it compact on board pages.
+  const shortName = user.name.split(/\s+/)[0] || user.name;
+
   return (
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center rounded-full transition hover:opacity-90"
-        aria-label="Account menu"
+        className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.07] bg-white/[0.02] py-0.5 pl-0.5 pr-2 transition-colors hover:border-white/[0.14] hover:bg-white/[0.06]"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Account: ${user.name}`}
       >
         <Avatar
-          size="md"
+          size="sm"
           member={{
             name: user.name,
             avatarColor: pickAvatarColor(user.email),
             avatarUrl: user.avatarUrl ?? null,
           }}
         />
+        <span className="hidden max-w-[120px] truncate text-[12px] font-medium text-zinc-200 sm:inline">
+          {shortName}
+        </span>
+        <ChevronDown className="h-3 w-3 text-zinc-500" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-40 mt-2 w-60 overflow-hidden rounded-md border border-white/10 bg-ink-800 shadow-xl shadow-black/40">
-          <div className="border-b border-white/10 px-3 py-2.5">
-            <div className="truncate text-[13px] font-medium text-zinc-100">
-              {user.name}
-            </div>
-            <div className="truncate text-[11px] text-zinc-500">
-              {user.email}
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-40 mt-2 w-64 overflow-hidden rounded-md border border-white/10 bg-ink-800 shadow-xl shadow-black/40"
+        >
+          <div className="flex items-center gap-2.5 border-b border-white/10 px-3 py-3">
+            <Avatar
+              size="lg"
+              member={{
+                name: user.name,
+                avatarColor: pickAvatarColor(user.email),
+                avatarUrl: user.avatarUrl ?? null,
+              }}
+            />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[13px] font-medium text-zinc-100">
+                {user.name}
+              </div>
+              <div className="truncate text-[11px] text-zinc-500">
+                {user.email}
+              </div>
             </div>
           </div>
           <button
