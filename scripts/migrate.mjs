@@ -72,8 +72,22 @@ if (files.length === 0) {
 const safeUrl = url.replace(/:[^:@/]+@/, ":***@");
 console.log(`→ connecting to ${safeUrl}`);
 
+// pg ≥ 8.20 reinterprets sslmode=require as verify-full, which fails against
+// Supabase's pooler (self-signed chain). Opt back into libpq semantics so
+// "require" means "use TLS, don't verify the cert".
+function withLibpqSsl(connStr) {
+  const u = new URL(connStr);
+  if (!u.searchParams.has("uselibpqcompat")) {
+    u.searchParams.set("uselibpqcompat", "true");
+  }
+  if (!u.searchParams.has("sslmode")) {
+    u.searchParams.set("sslmode", "require");
+  }
+  return u.toString();
+}
+
 const client = new pg.Client({
-  connectionString: url,
+  connectionString: withLibpqSsl(url),
   ssl: { rejectUnauthorized: false },
 });
 
