@@ -195,24 +195,29 @@ export function BoardShell({
                 </div>
               )}
             </div>
-            <input
-              value={titleDraft}
-              onChange={(e) => setTitleDraft(e.target.value)}
-              readOnly={readOnly}
-              onBlur={() => {
-                if (readOnly) return;
-                const v = titleDraft.trim();
-                if (v && v !== board.name) renameBoard(board.id, v);
-                else setTitleDraft(board.name);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-              }}
-              className="rounded border border-transparent bg-transparent px-1 py-0.5 text-[14px] font-medium tracking-tight text-fg hover:border-line focus:border-brand-500/40 focus:bg-surface focus:outline-none"
-            />
-            <span className="font-mono text-[10px] text-fg-faint">
-              {taskCode(board.id)}
-            </span>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <input
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                readOnly={readOnly}
+                onBlur={() => {
+                  if (readOnly) return;
+                  const v = titleDraft.trim();
+                  if (v && v !== board.name) renameBoard(board.id, v);
+                  else setTitleDraft(board.name);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                }}
+                className="min-w-0 rounded border border-transparent bg-transparent px-1 py-0.5 text-[14px] font-medium tracking-tight text-fg hover:border-line focus:border-brand-500/40 focus:bg-surface focus:outline-none"
+              />
+              <span
+                title="Board ID"
+                className="shrink-0 rounded border border-line bg-subtle px-1.5 py-0.5 font-mono text-[10px] tracking-tight text-fg-subtle"
+              >
+                {taskCode(board.id)}
+              </span>
+            </div>
             <div className="ml-3 hidden items-center gap-2 sm:flex">
               <AvatarStack members={board.members} max={4} size="sm" />
               {!readOnly && (
