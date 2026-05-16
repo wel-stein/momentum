@@ -303,7 +303,7 @@ function Row({
               if (confirm("Delete this task?")) onDelete();
             }}
             aria-label="Delete task"
-            className="rounded p-1 text-fg-faint opacity-0 transition-opacity group-hover:opacity-100 hover:bg-rose-500/10 hover:text-rose-400"
+            className="rounded p-1 text-fg-faint transition-colors group-hover:text-fg-muted hover:bg-rose-500/10 hover:!text-rose-500"
           >
             <Trash2 className="h-3 w-3" />
           </button>
