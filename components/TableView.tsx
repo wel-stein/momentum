@@ -106,12 +106,24 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                     </tr>
                   </thead>
                   <tbody>
-                    {!readOnly && (
+                    {/* Empty group: show the input first so the user has
+                        somewhere to type immediately. */}
+                    {!readOnly && tasks.length === 0 && (
                       <tr>
                         <td colSpan={8} className="px-2 py-1">
                           <AddRow
                             onAdd={(title) => addTask(board.id, g.id, title)}
                           />
+                        </td>
+                      </tr>
+                    )}
+                    {tasks.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={8}
+                          className="px-4 py-4 text-center text-[11px] text-fg-subtle"
+                        >
+                          No tasks yet — start typing above.
                         </td>
                       </tr>
                     )}
@@ -126,13 +138,14 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                         onDelete={() => deleteTask(board.id, t.id)}
                       />
                     ))}
-                    {tasks.length === 0 && (
+                    {/* Populated group: the append-row sits below existing
+                        tasks, where new items naturally land. */}
+                    {!readOnly && tasks.length > 0 && (
                       <tr>
-                        <td
-                          colSpan={8}
-                          className="px-4 py-4 text-center text-[11px] text-fg-subtle"
-                        >
-                          No tasks yet — start typing above.
+                        <td colSpan={8} className="px-2 py-1">
+                          <AddRow
+                            onAdd={(title) => addTask(board.id, g.id, title)}
+                          />
                         </td>
                       </tr>
                     )}
