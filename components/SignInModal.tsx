@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { signInWithGoogleRedirect } from "@/lib/auth";
 import { Modal } from "./Modal";
-import { GoogleOneTap } from "./GoogleOneTap";
 
 interface Props {
   open: boolean;
@@ -62,7 +61,6 @@ export function SignInModal({ open, onClose }: Props) {
           </p>
         </div>
       </Modal>
-      {open && <GoogleOneTap />}
     </>
   );
 }

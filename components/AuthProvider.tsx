@@ -5,6 +5,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
 import type { CurrentUser } from "@/lib/auth";
 import { useStore } from "@/lib/store";
+import { GoogleOneTap } from "./GoogleOneTap";
 
 interface AuthState {
   user: CurrentUser | null;
@@ -68,7 +69,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, [setStoreUser]);
 
-  return <Ctx.Provider value={state}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={state}>
+      {children}
+      {state.ready && <GoogleOneTap />}
+    </Ctx.Provider>
+  );
 }
 
 export function useAuth() {
