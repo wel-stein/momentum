@@ -9,7 +9,16 @@ import { Modal } from "./Modal";
 import { StatusPill } from "./StatusPill";
 import { PriorityPill } from "./PriorityPill";
 import { AssigneePicker } from "./AssigneePicker";
+import { DatePicker } from "./DatePicker";
 import { useReadOnly } from "./BoardContext";
+import { isOverdue } from "@/lib/utils";
+
+function isOverdueFlag(
+  due: string | undefined,
+  status: string,
+): boolean {
+  return Boolean(isOverdue(due) && status !== "done");
+}
 
 interface Props {
   board: Board;
@@ -134,33 +143,22 @@ export function TaskModal({ board, taskId, onClose }: Props) {
             />
           </Field>
           <Field label="Start">
-            <input
-              type="date"
-              value={task.startDate ? task.startDate.slice(0, 10) : ""}
-              readOnly={readOnly}
-              onChange={(e) =>
-                patch({
-                  startDate: e.target.value
-                    ? new Date(e.target.value).toISOString()
-                    : undefined,
-                })
-              }
-              className="rounded border border-line bg-surface px-2 py-1 text-[12px] tabular-nums text-fg focus:border-brand-500/40 focus:outline-none read-only:opacity-60"
+            <DatePicker
+              size="md"
+              value={task.startDate}
+              disabled={readOnly}
+              onChange={(v) => patch({ startDate: v })}
+              label="Start date"
             />
           </Field>
           <Field label="Due">
-            <input
-              type="date"
-              value={task.dueDate ? task.dueDate.slice(0, 10) : ""}
-              readOnly={readOnly}
-              onChange={(e) =>
-                patch({
-                  dueDate: e.target.value
-                    ? new Date(e.target.value).toISOString()
-                    : undefined,
-                })
-              }
-              className="rounded border border-line bg-surface px-2 py-1 text-[12px] tabular-nums text-fg focus:border-brand-500/40 focus:outline-none read-only:opacity-60"
+            <DatePicker
+              size="md"
+              value={task.dueDate}
+              disabled={readOnly}
+              onChange={(v) => patch({ dueDate: v })}
+              overdue={isOverdueFlag(task.dueDate, task.status)}
+              label="Due date"
             />
           </Field>
           <Field label="Tags">

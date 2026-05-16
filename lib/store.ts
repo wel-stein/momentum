@@ -607,17 +607,14 @@ export const useStore = create<State & Actions>()(
             };
           }),
         }));
-        if (touched) {
-          const t = touched;
-          if (patch.assigneeIds) {
-            fnf(
-              (async () => {
-                await upsertTask(boardId, t);
-              })(),
-            );
-          } else {
-            fnf(upsertTask(boardId, t));
-          }
+        if (!touched) return;
+        const next = touched;
+        fnf(upsertTask(boardId, next));
+        // task_assignees is a separate table; only touch it when the patch
+        // actually changed the assignee list, otherwise we re-DELETE+INSERT
+        // on every title / status / date edit.
+        if (patch.assigneeIds !== undefined) {
+          fnf(setTaskAssignees(next.id, next.assigneeIds));
         }
       },
 

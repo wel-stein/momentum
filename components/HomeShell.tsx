@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Plus, Trash2, LayoutGrid, Layout, Calendar } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Modal } from "./Modal";
@@ -20,6 +21,7 @@ export function HomeShell() {
   const deleteBoard = useStore((s) => s.deleteBoard);
   const auth = useAuth();
   const user = useUser();
+  const router = useRouter();
 
   const [showNew, setShowNew] = useState(false);
   const [name, setName] = useState("");
@@ -212,7 +214,7 @@ export function HomeShell() {
                 setName("");
                 setDescription("");
                 setShowNew(false);
-                window.location.href = `/board/${id}`;
+                router.push(`/board/${id}`);
               }}
               className="rounded bg-brand-500 px-3 py-1 text-[12px] font-medium text-white hover:bg-brand-400"
             >

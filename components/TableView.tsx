@@ -8,6 +8,7 @@ import { cn, formatDateSmart, isOverdue, taskCode } from "@/lib/utils";
 import { StatusPill } from "./StatusPill";
 import { PriorityPill } from "./PriorityPill";
 import { AssigneePicker } from "./AssigneePicker";
+import { DatePicker } from "./DatePicker";
 import { useReadOnly } from "./BoardContext";
 
 interface Props {
@@ -260,56 +261,21 @@ function Row({
         />
       </td>
       <td className="px-3">
-        {readOnly ? (
-          <span className="text-[11px] tabular-nums text-fg-muted">
-            {formatDateSmart(task.startDate) || "—"}
-          </span>
-        ) : (
-          <input
-            type="date"
-            value={task.startDate ? task.startDate.slice(0, 10) : ""}
-            onChange={(e) =>
-              updateTask(board.id, task.id, {
-                startDate: e.target.value
-                  ? new Date(e.target.value).toISOString()
-                  : undefined,
-              })
-            }
-            className="rounded border-0 bg-transparent px-1 py-0.5 text-[11px] tabular-nums text-fg-muted focus:bg-surface focus:outline-none focus:ring-1 focus:ring-brand-500/30"
-          />
-        )}
+        <DatePicker
+          value={task.startDate}
+          disabled={readOnly}
+          onChange={(v) => updateTask(board.id, task.id, { startDate: v })}
+          label="Start date"
+        />
       </td>
       <td className="px-3">
-        {readOnly ? (
-          <span
-            className={cn(
-              "text-[11px] tabular-nums",
-              overdue && task.status !== "done"
-                ? "text-rose-400"
-                : "text-fg-muted",
-            )}
-          >
-            {formatDateSmart(task.dueDate) || "—"}
-          </span>
-        ) : (
-          <input
-            type="date"
-            value={task.dueDate ? task.dueDate.slice(0, 10) : ""}
-            onChange={(e) =>
-              updateTask(board.id, task.id, {
-                dueDate: e.target.value
-                  ? new Date(e.target.value).toISOString()
-                  : undefined,
-              })
-            }
-            className={cn(
-              "rounded border-0 bg-transparent px-1 py-0.5 text-[11px] tabular-nums focus:bg-surface focus:outline-none focus:ring-1 focus:ring-brand-500/30",
-              overdue && task.status !== "done"
-                ? "text-rose-400"
-                : "text-fg-muted",
-            )}
-          />
-        )}
+        <DatePicker
+          value={task.dueDate}
+          disabled={readOnly}
+          onChange={(v) => updateTask(board.id, task.id, { dueDate: v })}
+          overdue={overdue && task.status !== "done"}
+          label="Due date"
+        />
       </td>
       <td className="px-3">
         <div className="flex flex-wrap gap-1">

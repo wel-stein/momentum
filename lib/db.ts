@@ -242,7 +242,6 @@ export async function upsertTask(boardId: string, task: Task) {
     updated_at: task.updatedAt,
   });
   logErr("upsertTask", error);
-  await setTaskAssignees(task.id, task.assigneeIds);
 }
 
 export async function setTaskAssignees(taskId: string, memberIds: string[]) {
@@ -273,5 +272,8 @@ export async function seedSampleBoard(board: Board) {
     board.groups.map((g, i) => upsertGroup(board.id, g, i)),
   );
   await Promise.all(board.members.map((m) => upsertMember(board.id, m)));
-  for (const t of board.tasks) await upsertTask(board.id, t);
+  for (const t of board.tasks) {
+    await upsertTask(board.id, t);
+    if (t.assigneeIds.length > 0) await setTaskAssignees(t.id, t.assigneeIds);
+  }
 }
