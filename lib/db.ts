@@ -268,10 +268,15 @@ export async function deleteTask(taskId: string) {
 
 export async function seedSampleBoard(board: Board) {
   await upsertBoard(board);
+  // Members must be inserted before groups/tasks: per-board RLS requires
+  // is_board_member(board_id) for sub-table writes. Within the members
+  // list the owner (the row carrying auth_user_id = auth.uid()) must
+  // come first so subsequent inserts of teammate rows satisfy the
+  // membership check.
+  for (const m of board.members) await upsertMember(board.id, m);
   await Promise.all(
     board.groups.map((g, i) => upsertGroup(board.id, g, i)),
   );
-  await Promise.all(board.members.map((m) => upsertMember(board.id, m)));
   for (const t of board.tasks) {
     await upsertTask(board.id, t);
     if (t.assigneeIds.length > 0) await setTaskAssignees(t.id, t.assigneeIds);

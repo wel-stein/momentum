@@ -11,6 +11,7 @@ import { SyncBanner } from "./SyncBanner";
 import { UserMenu } from "./UserMenu";
 import { Kbd } from "./Kbd";
 import { useAuth, useUser } from "./AuthProvider";
+import { useConfirm } from "./ConfirmDialog";
 import { formatDateSmart, taskCode } from "@/lib/utils";
 
 export function HomeShell() {
@@ -22,6 +23,7 @@ export function HomeShell() {
   const auth = useAuth();
   const user = useUser();
   const router = useRouter();
+  const confirm = useConfirm();
 
   const [showNew, setShowNew] = useState(false);
   const [name, setName] = useState("");
@@ -169,10 +171,16 @@ export function HomeShell() {
                   </Link>
                   {user && (
                     <button
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.preventDefault();
                         if (
-                          confirm(`Delete "${b.name}"? This cannot be undone.`)
+                          await confirm({
+                            title: `Delete "${b.name}"?`,
+                            message:
+                              "This permanently removes the board, its groups, tasks, and members. Cannot be undone.",
+                            tone: "danger",
+                            confirmLabel: "Delete board",
+                          })
                         ) {
                           deleteBoard(b.id);
                         }

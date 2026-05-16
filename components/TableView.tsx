@@ -10,6 +10,7 @@ import { PriorityPill } from "./PriorityPill";
 import { AssigneePicker } from "./AssigneePicker";
 import { DatePicker } from "./DatePicker";
 import { useReadOnly } from "./BoardContext";
+import { useConfirm } from "./ConfirmDialog";
 
 interface Props {
   board: Board;
@@ -25,6 +26,7 @@ export function TableView({ board, onOpenTask, filter }: Props) {
   const toggleCollapsed = useStore((s) => s.toggleGroupCollapsed);
   const renameGroup = useStore((s) => s.renameGroup);
   const deleteGroup = useStore((s) => s.deleteGroup);
+  const confirm = useConfirm();
 
   return (
     <div className="space-y-5 px-5 py-4">
@@ -75,11 +77,15 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                     <Plus className="h-3 w-3" /> Add task
                   </button>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (
-                        confirm(
-                          `Delete group "${g.name}"? Tasks inside will be removed.`,
-                        )
+                        await confirm({
+                          title: `Delete group "${g.name}"?`,
+                          message:
+                            "Every task in this group will be removed as well.",
+                          tone: "danger",
+                          confirmLabel: "Delete group",
+                        })
                       )
                         deleteGroup(board.id, g.id);
                     }}
@@ -198,6 +204,7 @@ function Row({
 }) {
   const updateTask = useStore((s) => s.updateTask);
   const overdue = isOverdue(task.dueDate);
+  const confirm = useConfirm();
   const [title, setTitle] = useState(task.title);
 
   useEffect(() => {
@@ -297,8 +304,15 @@ function Row({
       <td className="px-2 text-right">
         {!readOnly && (
           <button
-            onClick={() => {
-              if (confirm("Delete this task?")) onDelete();
+            onClick={async () => {
+              if (
+                await confirm({
+                  title: `Delete "${task.title || "this task"}"?`,
+                  tone: "danger",
+                  confirmLabel: "Delete task",
+                })
+              )
+                onDelete();
             }}
             aria-label="Delete task"
             className="rounded p-1 text-fg-faint transition-colors group-hover:text-fg-muted hover:bg-rose-500/10 hover:!text-rose-500"

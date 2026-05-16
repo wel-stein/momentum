@@ -5,6 +5,7 @@ import { Copy, Eye, Link2, ShieldOff } from "lucide-react";
 import type { Board } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { Modal } from "./Modal";
+import { useConfirm } from "./ConfirmDialog";
 
 interface Props {
   board: Board;
@@ -15,6 +16,7 @@ interface Props {
 export function ShareModal({ board, open, onClose }: Props) {
   const enableSharing = useStore((s) => s.enableSharing);
   const disableSharing = useStore((s) => s.disableSharing);
+  const confirm = useConfirm();
   const [copied, setCopied] = useState(false);
   const [origin, setOrigin] = useState("");
 
@@ -97,8 +99,16 @@ export function ShareModal({ board, open, onClose }: Props) {
             <div className="flex items-center justify-between rounded border border-rose-500/20 bg-rose-500/[0.04] px-3 py-2 text-[11px] text-rose-200">
               <span>Revoking the link makes it stop working immediately.</span>
               <button
-                onClick={() => {
-                  if (confirm("Revoke this share link?"))
+                onClick={async () => {
+                  if (
+                    await confirm({
+                      title: "Revoke this share link?",
+                      message:
+                        "Anyone holding the URL will lose access immediately. You can create a new link any time.",
+                      tone: "danger",
+                      confirmLabel: "Revoke link",
+                    })
+                  )
                     disableSharing(board.id);
                 }}
                 className="inline-flex items-center gap-1 rounded border border-rose-500/30 px-2 py-0.5 text-rose-300 hover:bg-rose-500/10"

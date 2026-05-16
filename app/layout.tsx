@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
+import { ConfirmProvider } from "@/components/ConfirmDialog";
 import {
   ThemeProvider,
   THEME_NO_FLASH_SCRIPT,
@@ -21,14 +22,14 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <script
-          // Runs before React hydration so the .dark class is on <html>
-          // before paint — no flash of light theme on dark loads.
           dangerouslySetInnerHTML={{ __html: THEME_NO_FLASH_SCRIPT }}
         />
       </head>
       <body>
         <ThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <ConfirmProvider>{children}</ConfirmProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

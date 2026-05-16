@@ -25,6 +25,7 @@ import { TimelineView } from "./TimelineView";
 import { TaskModal } from "./TaskModal";
 import { InviteMembersModal } from "./InviteMembersModal";
 import { ShareModal } from "./ShareModal";
+import { Modal } from "./Modal";
 import { SyncBanner } from "./SyncBanner";
 import { BoardProvider } from "./BoardContext";
 import { UserMenu } from "./UserMenu";
@@ -60,6 +61,8 @@ export function BoardShell({
   const [showInvite, setShowInvite] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
+  const [showAddGroup, setShowAddGroup] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
@@ -300,8 +303,8 @@ export function BoardShell({
               <div className="ml-auto flex items-center gap-1">
                 <button
                   onClick={() => {
-                    const name = prompt("New group name");
-                    if (name?.trim()) addGroup(board.id, name.trim());
+                    setNewGroupName("");
+                    setShowAddGroup(true);
                   }}
                   className="inline-flex items-center gap-1 rounded bg-brand-500 px-2 py-1 text-[11px] font-medium text-white hover:bg-brand-400"
                 >
@@ -358,6 +361,55 @@ export function BoardShell({
               open={showShare}
               onClose={() => setShowShare(false)}
             />
+            <Modal
+              open={showAddGroup}
+              onClose={() => setShowAddGroup(false)}
+              title="New group"
+              size="sm"
+              footer={
+                <>
+                  <button
+                    onClick={() => setShowAddGroup(false)}
+                    className="rounded px-3 py-1 text-[12px] text-fg hover:bg-hover"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      const v = newGroupName.trim();
+                      if (!v) return;
+                      addGroup(board.id, v);
+                      setNewGroupName("");
+                      setShowAddGroup(false);
+                    }}
+                    disabled={!newGroupName.trim()}
+                    className="rounded bg-brand-500 px-3 py-1 text-[12px] font-medium text-white hover:bg-brand-400 disabled:opacity-50"
+                  >
+                    Add group
+                  </button>
+                </>
+              }
+            >
+              <label className="block">
+                <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-fg-subtle">
+                  Name
+                </div>
+                <input
+                  autoFocus
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newGroupName.trim()) {
+                      addGroup(board.id, newGroupName.trim());
+                      setNewGroupName("");
+                      setShowAddGroup(false);
+                    }
+                  }}
+                  placeholder="e.g. This sprint"
+                  className="w-full rounded border border-line bg-surface px-2.5 py-1.5 text-[13px] text-fg placeholder:text-fg-faint focus:border-brand-500/40 focus:outline-none"
+                />
+              </label>
+            </Modal>
           </>
         )}
       </div>

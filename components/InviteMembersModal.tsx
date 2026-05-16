@@ -7,6 +7,7 @@ import { useStore } from "@/lib/store";
 import { Modal } from "./Modal";
 import { Avatar } from "./Avatar";
 import { useAuth, useUser } from "./AuthProvider";
+import { useConfirm } from "./ConfirmDialog";
 
 interface Props {
   board: Board;
@@ -23,6 +24,7 @@ export function InviteMembersModal({ board, open, onClose }: Props) {
   const me = useStore((s) => s.currentUserId);
   const auth = useAuth();
   const user = useUser();
+  const confirm = useConfirm();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -199,8 +201,16 @@ export function InviteMembersModal({ board, open, onClose }: Props) {
                   </select>
                   {!isMe && m.role !== "owner" && (
                     <button
-                      onClick={() => {
-                        if (confirm(`Remove ${display.name} from the board?`))
+                      onClick={async () => {
+                        if (
+                          await confirm({
+                            title: `Remove ${display.name}?`,
+                            message:
+                              "They'll lose access to this board's tasks and members. You can re-invite them later.",
+                            tone: "danger",
+                            confirmLabel: "Remove member",
+                          })
+                        )
                           remove(board.id, m.id);
                       }}
                       className="rounded p-1 text-fg-subtle hover:bg-rose-500/10 hover:text-rose-400"

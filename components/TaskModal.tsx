@@ -11,6 +11,7 @@ import { PriorityPill } from "./PriorityPill";
 import { AssigneePicker } from "./AssigneePicker";
 import { DatePicker } from "./DatePicker";
 import { useReadOnly } from "./BoardContext";
+import { useConfirm } from "./ConfirmDialog";
 import { isOverdue } from "@/lib/utils";
 
 function isOverdueFlag(
@@ -31,6 +32,7 @@ export function TaskModal({ board, taskId, onClose }: Props) {
   const updateTask = useStore((s) => s.updateTask);
   const deleteTask = useStore((s) => s.deleteTask);
   const moveTask = useStore((s) => s.moveTask);
+  const confirm = useConfirm();
 
   const task = board.tasks.find((t) => t.id === taskId) ?? null;
   const [tagDraft, setTagDraft] = useState("");
@@ -68,8 +70,14 @@ export function TaskModal({ board, taskId, onClose }: Props) {
         <>
           {!readOnly && (
             <button
-              onClick={() => {
-                if (confirm("Delete this task?")) {
+              onClick={async () => {
+                if (
+                  await confirm({
+                    title: `Delete "${task.title || "this task"}"?`,
+                    tone: "danger",
+                    confirmLabel: "Delete task",
+                  })
+                ) {
                   deleteTask(board.id, task.id);
                   onClose();
                 }
