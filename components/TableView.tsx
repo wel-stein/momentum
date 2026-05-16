@@ -96,10 +96,11 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                   <thead className="bg-subtle text-[10px] uppercase tracking-wider text-fg-subtle">
                     <tr className="border-b border-line">
                       <Th className="w-[64px] whitespace-nowrap">ID</Th>
-                      <Th className="w-[48%] min-w-[320px]">Task</Th>
+                      <Th className="w-[44%] min-w-[320px]">Task</Th>
                       <Th className="w-[96px]">Owners</Th>
                       <Th className="w-[140px]">Status</Th>
                       <Th className="w-[120px]">Priority</Th>
+                      <Th className="w-[88px]">Start</Th>
                       <Th className="w-[88px]">Due</Th>
                       <Th className="w-[160px]">Tags</Th>
                       <Th className="w-8" />
@@ -110,7 +111,7 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                         somewhere to type immediately. */}
                     {!readOnly && tasks.length === 0 && (
                       <tr>
-                        <td colSpan={8} className="px-2 py-1">
+                        <td colSpan={9} className="px-2 py-1">
                           <AddRow
                             onAdd={(title) => addTask(board.id, g.id, title)}
                           />
@@ -120,7 +121,7 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                     {tasks.length === 0 && (
                       <tr>
                         <td
-                          colSpan={8}
+                          colSpan={9}
                           className="px-4 py-4 text-center text-[11px] text-fg-subtle"
                         >
                           No tasks yet — start typing above.
@@ -142,7 +143,7 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                         tasks, where new items naturally land. */}
                     {!readOnly && tasks.length > 0 && (
                       <tr>
-                        <td colSpan={8} className="px-2 py-1">
+                        <td colSpan={9} className="px-2 py-1">
                           <AddRow
                             onAdd={(title) => addTask(board.id, g.id, title)}
                           />
@@ -257,6 +258,26 @@ function Row({
           disabled={readOnly}
           onChange={(v) => updateTask(board.id, task.id, { priority: v })}
         />
+      </td>
+      <td className="px-3">
+        {readOnly ? (
+          <span className="text-[11px] tabular-nums text-fg-muted">
+            {formatDateSmart(task.startDate) || "—"}
+          </span>
+        ) : (
+          <input
+            type="date"
+            value={task.startDate ? task.startDate.slice(0, 10) : ""}
+            onChange={(e) =>
+              updateTask(board.id, task.id, {
+                startDate: e.target.value
+                  ? new Date(e.target.value).toISOString()
+                  : undefined,
+              })
+            }
+            className="rounded border-0 bg-transparent px-1 py-0.5 text-[11px] tabular-nums text-fg-muted focus:bg-surface focus:outline-none focus:ring-1 focus:ring-brand-500/30"
+          />
+        )}
       </td>
       <td className="px-3">
         {readOnly ? (
