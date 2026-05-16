@@ -9,13 +9,19 @@ import { useStore, type RemoteChange } from "@/lib/store";
  * Subscribes to Supabase Realtime postgres_changes for the given board and
  * pipes every INSERT / UPDATE / DELETE into useStore.applyRemoteChange.
  *
- * Mounted once inside BoardShell (and skipped on share/read-only contexts
- * where mutations shouldn't echo back). Returns nothing visual.
+ * Gated behind NEXT_PUBLIC_ENABLE_REALTIME=true because Supabase Realtime
+ * lives behind the Database Replication feature, which is billable on
+ * paid plans. When the flag is unset / "false", this component returns
+ * null and opens no channel, so it's free to keep mounted. Flip the env
+ * var (and enable replication on the five tables in the Supabase
+ * dashboard) to turn live updates on.
  */
 export function RealtimeSync({ boardId }: { boardId: string }) {
+  const enabled = process.env.NEXT_PUBLIC_ENABLE_REALTIME === "true";
   const applyRemoteChange = useStore((s) => s.applyRemoteChange);
 
   useEffect(() => {
+    if (!enabled) return;
     if (!boardId) return;
     const sb = getSupabase();
     if (!sb) return;
@@ -98,7 +104,7 @@ export function RealtimeSync({ boardId }: { boardId: string }) {
     return () => {
       void sb.removeChannel(channel);
     };
-  }, [boardId, applyRemoteChange]);
+  }, [enabled, boardId, applyRemoteChange]);
 
   return null;
 }
