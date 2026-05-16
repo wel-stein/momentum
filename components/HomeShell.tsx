@@ -138,7 +138,16 @@ export function HomeShell() {
                           )}
                         </div>
                       </div>
-                      <ViewIcon view={b.view} />
+                      <ViewIcon
+                        view={b.view}
+                        // Fade out so the absolute-positioned delete button
+                        // at the same corner replaces it cleanly on hover.
+                        className={
+                          user
+                            ? "transition-opacity group-hover:opacity-0"
+                            : ""
+                        }
+                      />
                     </div>
                     <div className="mt-3 h-[3px] overflow-hidden rounded-full bg-hover">
                       <div
@@ -167,7 +176,9 @@ export function HomeShell() {
                         }
                       }}
                       aria-label="Delete board"
-                      className="absolute right-2 top-2 hidden rounded p-1 text-fg-faint hover:bg-rose-500/10 hover:text-rose-400 group-hover:block"
+                      // Sits directly over the ViewIcon (which fades out on
+                      // hover), so they swap visually instead of overlapping.
+                      className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded bg-surface text-fg-faint opacity-0 transition-opacity hover:bg-rose-500/10 hover:text-rose-500 group-hover:opacity-100"
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -241,14 +252,22 @@ export function HomeShell() {
   );
 }
 
-function ViewIcon({ view }: { view: string }) {
+function ViewIcon({
+  view,
+  className,
+}: {
+  view: string;
+  className?: string;
+}) {
   const map: Record<string, React.ReactNode> = {
     kanban: <LayoutGrid className="h-3.5 w-3.5" />,
     table: <Layout className="h-3.5 w-3.5" />,
     timeline: <Calendar className="h-3.5 w-3.5" />,
   };
   return (
-    <span className="grid h-6 w-6 place-items-center rounded bg-hover text-fg-subtle">
+    <span
+      className={`grid h-6 w-6 shrink-0 place-items-center rounded bg-hover text-fg-subtle ${className ?? ""}`}
+    >
       {map[view]}
     </span>
   );

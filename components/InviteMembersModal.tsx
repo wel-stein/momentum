@@ -6,6 +6,7 @@ import type { Board, Member } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { Modal } from "./Modal";
 import { Avatar } from "./Avatar";
+import { useUser } from "./AuthProvider";
 
 interface Props {
   board: Board;

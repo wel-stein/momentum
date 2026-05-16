@@ -242,6 +242,51 @@ function fnf<T>(p: Promise<T>) {
   p.catch((err) => console.error("[momentum/store] sync error", err));
 }
 
+const PLACEHOLDER_EMAIL = "you@momentum.app";
+
+/**
+ * For every board, find the member row that represents the signed-in user
+ * (by auth_user_id, by id-equals-auth-uuid, or by the legacy "you@momentum.app"
+ * placeholder seed) and update its name / email / avatar / authUserId to the
+ * real Google profile. Returns the updated boards array plus a list of
+ * upserts the caller can fire-and-forget.
+ */
+function claimMyMember(
+  boards: Board[],
+  user: CurrentUser,
+): { boards: Board[]; upserts: Array<() => Promise<void>> } {
+  const upserts: Array<() => Promise<void>> = [];
+  const next = boards.map((b) => {
+    let idx = b.members.findIndex((m) => m.authUserId === user.id);
+    if (idx === -1) idx = b.members.findIndex((m) => m.id === user.id);
+    if (idx === -1)
+      idx = b.members.findIndex(
+        (m) => m.email === PLACEHOLDER_EMAIL && m.role === "owner",
+      );
+    if (idx === -1) return b;
+    const old = b.members[idx];
+    const updated: Member = {
+      ...old,
+      authUserId: user.id,
+      name: user.name,
+      email: user.email,
+      avatarUrl: user.avatarUrl ?? old.avatarUrl ?? null,
+    };
+    if (
+      old.authUserId === updated.authUserId &&
+      old.name === updated.name &&
+      old.email === updated.email &&
+      old.avatarUrl === updated.avatarUrl
+    )
+      return b;
+    const newMembers = b.members.slice();
+    newMembers[idx] = updated;
+    upserts.push(() => upsertMember(b.id, updated));
+    return { ...b, members: newMembers, updatedAt: nowIso() };
+  });
+  return { boards: next, upserts };
+}
+
 export const useStore = create<State & Actions>()(
   persist(
     (set, get) => ({
@@ -257,6 +302,15 @@ export const useStore = create<State & Actions>()(
           currentUser: user,
           currentUserId: user?.id ?? get().currentUserId,
         });
+        if (!user) return;
+        const { boards: nextBoards, upserts } = claimMyMember(
+          get().boards,
+          user,
+        );
+        if (upserts.length > 0) {
+          set({ boards: nextBoards });
+          for (const u of upserts) fnf(u());
+        }
       },
 
       setHydrated: async () => {
@@ -307,9 +361,17 @@ export const useStore = create<State & Actions>()(
           fnf(seedSampleBoard(sample));
           return;
         }
+        // If signed in, rewrite any "you@momentum.app" / placeholder member
+        // rows to the real Google profile (legacy boards seeded pre-auth).
+        let loaded = remote.data;
+        if (user) {
+          const sync = claimMyMember(loaded, user);
+          loaded = sync.boards;
+          for (const u of sync.upserts) fnf(u());
+        }
         set({
           currentUserId,
-          boards: remote.data,
+          boards: loaded,
           hydrated: true,
           loading: false,
         });

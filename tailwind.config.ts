@@ -52,6 +52,12 @@ const config: Config = {
           "Helvetica",
           "Arial",
           "sans-serif",
+          // Pin OS color-emoji fonts so board / task emojis render in
+          // color even when Inter is loaded as the UI font.
+          '"Apple Color Emoji"',
+          '"Segoe UI Emoji"',
+          '"Segoe UI Symbol"',
+          '"Noto Color Emoji"',
         ],
         mono: [
           "ui-monospace",
