@@ -37,6 +37,19 @@ export function TaskModal({ board, taskId, onClose }: Props) {
     updateTask(board.id, task.id, p);
   };
 
+  const commitTags = () => {
+    if (readOnly) return;
+    const incoming = tagDraft
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    if (incoming.length === 0) return;
+    const next = [...task.tags];
+    for (const t of incoming) if (!next.includes(t)) next.push(t);
+    if (next.length !== task.tags.length) patch({ tags: next });
+    setTagDraft("");
+  };
+
   return (
     <Modal
       open={!!taskId}
@@ -151,42 +164,53 @@ export function TaskModal({ board, taskId, onClose }: Props) {
             />
           </Field>
           <Field label="Tags">
-            <div className="flex flex-wrap items-center gap-1">
-              {task.tags.map((t) => (
-                <span
-                  key={t}
-                  className="inline-flex items-center gap-1 rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[10px] text-zinc-300"
-                >
-                  {t}
-                  {!readOnly && (
-                    <button
-                      onClick={() =>
-                        patch({ tags: task.tags.filter((x) => x !== t) })
-                      }
-                      aria-label={`Remove ${t}`}
-                      className="text-zinc-500 hover:text-rose-400"
+            <div className="flex w-full flex-col gap-2">
+              {task.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {task.tags.map((t) => (
+                    <span
+                      key={t}
+                      className="inline-flex items-center gap-1 rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[10px] text-zinc-300"
                     >
-                      <X className="h-2.5 w-2.5" />
-                    </button>
-                  )}
-                </span>
-              ))}
+                      {t}
+                      {!readOnly && (
+                        <button
+                          onClick={() =>
+                            patch({ tags: task.tags.filter((x) => x !== t) })
+                          }
+                          aria-label={`Remove ${t}`}
+                          className="text-zinc-500 hover:text-rose-400"
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              )}
               {!readOnly && (
-                <input
-                  value={tagDraft}
-                  onChange={(e) => setTagDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && tagDraft.trim()) {
-                      e.preventDefault();
-                      if (!task.tags.includes(tagDraft.trim())) {
-                        patch({ tags: [...task.tags, tagDraft.trim()] });
+                <div className="flex gap-2">
+                  <input
+                    value={tagDraft}
+                    onChange={(e) => setTagDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === ",") {
+                        e.preventDefault();
+                        commitTags();
                       }
-                      setTagDraft("");
-                    }
-                  }}
-                  placeholder="Add tag…"
-                  className="min-w-[100px] flex-1 rounded border-0 bg-transparent px-1 py-0.5 text-[12px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-0"
-                />
+                    }}
+                    placeholder="Add tag — Enter or comma to add"
+                    className="flex-1 rounded border border-white/10 bg-ink-900 px-2.5 py-1 text-[12px] text-zinc-100 placeholder:text-zinc-600 focus:border-brand-500/40 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={commitTags}
+                    disabled={!tagDraft.trim()}
+                    className="rounded bg-white/[0.06] px-2.5 py-1 text-[11px] font-medium text-zinc-200 hover:bg-white/[0.1] disabled:opacity-40"
+                  >
+                    Add
+                  </button>
+                </div>
               )}
               {readOnly && task.tags.length === 0 && (
                 <span className="text-[11px] text-zinc-600">No tags</span>
