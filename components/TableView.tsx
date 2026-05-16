@@ -106,15 +106,12 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                     </tr>
                   </thead>
                   <tbody>
-                    {tasks.length === 0 && (
+                    {!readOnly && (
                       <tr>
-                        <td
-                          colSpan={8}
-                          className="px-4 py-4 text-center text-[11px] text-fg-subtle"
-                        >
-                          No tasks. Press{" "}
-                          <span className="font-mono text-fg-muted">+ Add task</span>{" "}
-                          to start.
+                        <td colSpan={8} className="px-2 py-1">
+                          <AddRow
+                            onAdd={(title) => addTask(board.id, g.id, title)}
+                          />
                         </td>
                       </tr>
                     )}
@@ -129,12 +126,13 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                         onDelete={() => deleteTask(board.id, t.id)}
                       />
                     ))}
-                    {!readOnly && (
+                    {tasks.length === 0 && (
                       <tr>
-                        <td colSpan={8} className="px-2 py-1">
-                          <AddRow
-                            onAdd={(title) => addTask(board.id, g.id, title)}
-                          />
+                        <td
+                          colSpan={8}
+                          className="px-4 py-4 text-center text-[11px] text-fg-subtle"
+                        >
+                          No tasks yet — start typing above.
                         </td>
                       </tr>
                     )}
