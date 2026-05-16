@@ -12,7 +12,15 @@ export function getSupabase(): SupabaseClient | null {
   if (!url || !anon) return null;
   if (_client) return _client;
   _client = createClient(url, anon, {
-    auth: { persistSession: false },
+    auth: {
+      // Persist the session to localStorage and silently refresh the JWT
+      // so a page reload doesn't dump the user back to sign-in.
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storage: window.localStorage,
+      storageKey: "momentum-auth",
+    },
   });
   return _client;
 }
