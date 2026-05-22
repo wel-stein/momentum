@@ -64,33 +64,36 @@ export function HomeShell() {
     <div className="min-h-screen">
       <SyncBanner />
       <header className="border-b border-line">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
-          <div className="flex items-center gap-2.5">
-            <div className="grid h-6 w-6 place-items-center rounded bg-brand-500 text-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-3 sm:px-6">
+          {/* Left: logo + nav */}
+          <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
+            <div className="grid h-6 w-6 shrink-0 place-items-center rounded bg-brand-500 text-white">
               <span className="text-[11px] font-bold tracking-tight">M</span>
             </div>
-            <div className="text-[13px] font-medium tracking-tight text-fg">
+            <div className="hidden text-[13px] font-medium tracking-tight text-fg sm:block">
               Momentum
             </div>
-            <span className="font-mono text-[10px] text-fg-faint">v0.1</span>
-            <span className="text-fg-faint">·</span>
+            <span className="hidden font-mono text-[10px] text-fg-faint sm:inline">v0.1</span>
+            <span className="hidden text-fg-faint sm:inline">·</span>
             <Link
               href="/kpi"
-              className="flex items-center gap-1 text-[12px] text-fg-subtle hover:text-fg"
+              className="flex shrink-0 items-center gap-1 text-[12px] text-fg-subtle hover:text-fg"
             >
               <Target className="h-3.5 w-3.5" />
-              KPI
+              <span className="hidden sm:inline">KPI</span>
             </Link>
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* Right: actions */}
+          <div className="flex shrink-0 items-center gap-2">
             {user && (
               <button
                 onClick={() => setShowNew(true)}
                 className="inline-flex items-center gap-1.5 rounded bg-brand-500 px-2.5 py-1 text-[12px] font-medium text-white hover:bg-brand-400"
               >
                 <Plus className="h-3 w-3" />
-                New board
-                <Kbd className="ml-1 border-line-strong bg-hover text-fg">
+                <span className="hidden sm:inline">New board</span>
+                <Kbd className="ml-1 hidden border-line-strong bg-hover text-fg sm:inline-flex">
                   C
                 </Kbd>
               </button>

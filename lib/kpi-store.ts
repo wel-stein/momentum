@@ -86,6 +86,12 @@ export const useKpiStore = create<KpiState & KpiActions>()(
           return;
         }
         const remote = await fetchAllKpiSets();
+        if (remote === null) {
+          // Query failed (migration not applied or network error) — keep
+          // whatever is in localStorage so the page still works locally.
+          set({ hydrated: true, loading: false });
+          return;
+        }
         if (remote.length > 0) {
           set({ sets: remote, hydrated: true, loading: false });
         } else {

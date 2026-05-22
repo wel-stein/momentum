@@ -7,7 +7,8 @@ function logErr(label: string, err: unknown) {
   if (err) console.error(`[momentum/kpi-db] ${label}`, err);
 }
 
-export async function fetchAllKpiSets(): Promise<KpiSet[]> {
+// Returns null on error (distinguishes "query failed" from "empty table")
+export async function fetchAllKpiSets(): Promise<KpiSet[] | null> {
   const sb = getSupabase();
   if (!sb) return [];
   const { data, error } = await sb
@@ -16,13 +17,13 @@ export async function fetchAllKpiSets(): Promise<KpiSet[]> {
     .order("year", { ascending: false });
   if (error) {
     logErr("fetchAllKpiSets", error);
-    return [];
+    return null;
   }
   return (data ?? []).map((row) => ({
     id: row.id as string,
     year: row.year as number,
     title: row.title as string,
-    items: (row.items ?? []) as KpiItem[],
+    items: Array.isArray(row.items) ? (row.items as KpiItem[]) : [],
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   }));
