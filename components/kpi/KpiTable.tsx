@@ -1,11 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { Pencil, Trash2, Plus, GripVertical } from "lucide-react";
+import { Fragment, useState } from "react";
+import {
+  Pencil,
+  Trash2,
+  Plus,
+  GripVertical,
+  MessageSquare,
+  ChevronRight,
+} from "lucide-react";
 import { useKpiStore } from "@/lib/kpi-store";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { KpiItemModal } from "./KpiItemModal";
-import type { KpiItem } from "@/lib/kpi-types";
+import { KpiSubItemModal } from "./KpiSubItemModal";
+import type { KpiItem, KpiSubItem } from "@/lib/kpi-types";
+import {
+  perLevelWeight,
+  perSubItemLevelWeight,
+  itemAchievedScore,
+} from "@/lib/kpi-types";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -14,36 +27,144 @@ interface Props {
   readonly?: boolean;
 }
 
-const TARGET_LABELS = ["1", "2", "3", "4", "5"];
-const TARGET_KEYS = ["t1", "t2", "t3", "t4", "t5"] as const;
+// ---------------------------------------------------------------------------
+// Target level selector
+// ---------------------------------------------------------------------------
 
-function WeightBar({ value }: { value: number }) {
+function TargetSelector({
+  selected,
+  levelWeight,
+  onChange,
+}: {
+  selected?: 1 | 2 | 3 | 4 | 5;
+  levelWeight: number;
+  onChange: (t: 1 | 2 | 3 | 4 | 5) => void;
+}) {
   return (
-    <div className="flex items-center gap-1.5">
-      <div className="h-1 w-12 overflow-hidden rounded-full bg-hover">
-        <div
-          className="h-full rounded-full bg-brand-500/70"
-          style={{ width: `${Math.min(100, value)}%` }}
-        />
+    <div className="flex flex-col items-start gap-1">
+      <div className="flex items-center gap-0.5">
+        {([1, 2, 3, 4, 5] as const).map((level) => {
+          const isSelected = selected === level;
+          const achieves = (level * levelWeight).toFixed(1);
+          return (
+            <button
+              key={level}
+              onClick={() => onChange(level)}
+              title={`Level ${level} — achieves ${achieves}%`}
+              className={cn(
+                "grid h-6 w-6 place-items-center rounded text-[11px] font-bold transition-all",
+                isSelected
+                  ? "bg-brand-500 text-white shadow-sm"
+                  : "bg-hover text-fg-subtle hover:bg-brand-500/15 hover:text-brand-500",
+              )}
+            >
+              {level}
+            </button>
+          );
+        })}
       </div>
-      <span className="tabular-nums text-[11px] text-fg-muted">{value}%</span>
+      {selected && (
+        <span className="tabular-nums text-[10px] text-fg-faint">
+          T{selected} → {(selected * levelWeight).toFixed(1)}%
+        </span>
+      )}
     </div>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Inline notes row
+// ---------------------------------------------------------------------------
+
+function NotesRow({
+  colSpan,
+  label,
+  value,
+  onSave,
+}: {
+  colSpan: number;
+  label: string;
+  value: string;
+  onSave: (v: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+  return (
+    <tr>
+      <td colSpan={colSpan} className="px-4 pb-3 pt-0">
+        <div className="rounded-md border border-brand-500/20 bg-brand-500/5 p-3">
+          <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-brand-500/70">
+            Justification / Notes — {label}
+          </div>
+          <textarea
+            rows={2}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={() => onSave(draft)}
+            placeholder="Add justification or notes to support your selected target level…"
+            className="w-full resize-none rounded border border-line bg-surface px-2.5 py-1.5 text-[12px] text-fg placeholder:text-fg-faint focus:border-brand-500/40 focus:outline-none"
+          />
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Weight cell for sub-items
+// ---------------------------------------------------------------------------
+
+function SubWeightCell({ item }: { item: KpiItem }) {
+  const n = item.subItems.length;
+  if (n === 0) return null;
+  const w = perSubItemLevelWeight(item).toFixed(1);
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span
+        className="tabular-nums text-[11px] text-fg-subtle"
+        title={`${item.weightage}% ÷ 5 levels ÷ ${n} sub-objectives = ${w}% per level`}
+      >
+        {w}%
+        <span className="ml-0.5 text-fg-faint">/level</span>
+      </span>
+      <span className="text-[10px] text-fg-faint">
+        max {(5 * parseFloat(w)).toFixed(1)}%
+      </span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main table
+// ---------------------------------------------------------------------------
+
+const TARGET_KEYS = ["t1", "t2", "t3", "t4", "t5"] as const;
+
 export function KpiTable({ setId, items, readonly }: Props) {
+  const updateItem = useKpiStore((s) => s.updateItem);
   const deleteItem = useKpiStore((s) => s.deleteItem);
   const reorderItems = useKpiStore((s) => s.reorderItems);
+  const updateSubItem = useKpiStore((s) => s.updateSubItem);
+  const deleteSubItem = useKpiStore((s) => s.deleteSubItem);
   const confirm = useConfirm();
 
-  const [editing, setEditing] = useState<KpiItem | null | "new">(null);
+  const [editingItem, setEditingItem] = useState<KpiItem | null | "new">(null);
+  const [editingSubItem, setEditingSubItem] = useState<{
+    item: KpiItem;
+    sub: KpiSubItem | null;
+  } | null>(null);
+
+  // Set of IDs whose notes row is expanded (item.id or sub.id)
+  const [notesOpen, setNotesOpen] = useState<Set<string>>(new Set());
   const [dragging, setDragging] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
 
-  const totalWeight = items.reduce((sum, item) => sum + item.weightage, 0);
-
-  function handleDragStart(id: string) {
-    setDragging(id);
+  function toggleNotes(id: string) {
+    setNotesOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   function handleDrop(targetId: string) {
@@ -53,204 +174,448 @@ export function KpiTable({ setId, items, readonly }: Props) {
       return;
     }
     const next = [...items];
-    const fromIdx = next.findIndex((i) => i.id === dragging);
-    const toIdx = next.findIndex((i) => i.id === targetId);
-    if (fromIdx < 0 || toIdx < 0) return;
-    const [moved] = next.splice(fromIdx, 1);
-    next.splice(toIdx, 0, moved);
+    const from = next.findIndex((i) => i.id === dragging);
+    const to = next.findIndex((i) => i.id === targetId);
+    if (from < 0 || to < 0) return;
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
     reorderItems(setId, next);
     setDragging(null);
     setDragOver(null);
   }
 
+  const totalCols = readonly ? 10 : 12;
+  const totalWeight = items.reduce((s, i) => s + i.weightage, 0);
+
   return (
     <div className="space-y-2">
       <div className="overflow-x-auto rounded-lg border border-line">
-        <table className="w-full min-w-[900px] border-collapse text-[12px]">
+        <table className="w-full min-w-[1100px] border-collapse text-[12px]">
+          {/* ── Head ── */}
           <thead>
             <tr className="bg-[#1a2744] text-white">
               {!readonly && <th className="w-6 px-2 py-2.5" />}
-              <th className="w-10 px-3 py-2.5 text-center text-[11px] font-semibold tracking-wide">
+              <th className="w-10 px-3 py-2.5 text-center text-[11px] font-semibold">
                 No.
               </th>
-              <th className="px-3 py-2.5 text-left text-[11px] font-semibold tracking-wide">
+              <th className="px-3 py-2.5 text-left text-[11px] font-semibold">
                 Objectives
               </th>
-              <th className="w-24 px-3 py-2.5 text-center text-[11px] font-semibold tracking-wide">
+              <th className="w-28 px-3 py-2.5 text-center text-[11px] font-semibold">
                 Weightage (%)
               </th>
-              <th className="px-3 py-2.5 text-left text-[11px] font-semibold tracking-wide">
+              <th className="min-w-[140px] px-3 py-2.5 text-left text-[11px] font-semibold">
                 Measurable
               </th>
-              {TARGET_LABELS.map((l, i) => (
+              {/* Target columns with shared "Target" header label on col 1 */}
+              {TARGET_KEYS.map((key, i) => (
                 <th
-                  key={l}
+                  key={key}
                   className={cn(
-                    "w-28 px-2 py-2.5 text-center text-[11px] font-semibold tracking-wide",
+                    "w-24 px-2 py-2.5 text-center text-[11px] font-semibold",
                     i === 0 && "border-l border-white/20",
                   )}
                 >
                   {i === 0 ? (
                     <div>
-                      <div className="text-[9px] font-normal opacity-70">
+                      <div className="text-[9px] font-normal opacity-60">
                         Target
                       </div>
-                      <div>{l}</div>
+                      <div>1</div>
                     </div>
                   ) : (
-                    l
+                    i + 1
                   )}
                 </th>
               ))}
-              {!readonly && <th className="w-16 px-2 py-2.5" />}
+              <th className="w-36 px-3 py-2.5 text-center text-[11px] font-semibold">
+                Current Target
+              </th>
+              {!readonly && (
+                <th className="w-20 px-2 py-2.5 text-center text-[11px] font-semibold">
+                  Actions
+                </th>
+              )}
             </tr>
           </thead>
+
+          {/* ── Body ── */}
           <tbody>
             {items.length === 0 && (
               <tr>
                 <td
-                  colSpan={readonly ? 8 : 10}
+                  colSpan={totalCols}
                   className="px-4 py-12 text-center text-[12px] text-fg-faint"
                 >
-                  No KPI items yet. Add your first item below.
+                  No KPI items yet. Add your first objective below.
                 </td>
               </tr>
             )}
+
             {items.map((item, idx) => {
+              const hasSubItems = item.subItems.length > 0;
+              const levelW = perLevelWeight(item);
               const isOver = dragOver === item.id;
+
               return (
-                <tr
-                  key={item.id}
-                  draggable={!readonly}
-                  onDragStart={() => handleDragStart(item.id)}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setDragOver(item.id);
-                  }}
-                  onDragLeave={() => setDragOver(null)}
-                  onDrop={() => handleDrop(item.id)}
-                  className={cn(
-                    "border-t border-line transition-colors",
-                    idx % 2 === 0 ? "bg-surface" : "bg-subtle/40",
-                    isOver && "bg-brand-500/5 outline outline-1 outline-brand-500/30",
-                    dragging === item.id && "opacity-40",
-                  )}
-                >
-                  {!readonly && (
-                    <td className="px-2 py-3 text-fg-faint">
-                      <GripVertical className="h-3.5 w-3.5 cursor-grab active:cursor-grabbing" />
-                    </td>
-                  )}
-                  <td className="px-3 py-3 text-center font-semibold text-fg-muted">
-                    {item.no}
-                  </td>
-                  <td className="px-3 py-3">
-                    <div className="font-medium text-fg">{item.objectives}</div>
-                    {item.subItems.length > 0 && (
-                      <ul className="mt-1 space-y-0.5">
-                        {item.subItems.map((s, i) => (
-                          <li key={i} className="text-[11px] text-fg-subtle">
-                            {s}
-                          </li>
-                        ))}
-                      </ul>
+                <Fragment key={item.id}>
+                  {/* ── Parent row ── */}
+                  <tr
+                    draggable={!readonly}
+                    onDragStart={() => setDragging(item.id)}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDragOver(item.id);
+                    }}
+                    onDragLeave={() => setDragOver(null)}
+                    onDrop={() => handleDrop(item.id)}
+                    className={cn(
+                      "border-t border-line transition-colors",
+                      idx % 2 === 0 ? "bg-surface" : "bg-subtle/40",
+                      isOver &&
+                        "outline outline-1 outline-brand-500/30 bg-brand-500/5",
+                      dragging === item.id && "opacity-40",
                     )}
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    <WeightBar value={item.weightage} />
-                  </td>
-                  <td className="px-3 py-3 text-fg-muted">
-                    <div className="whitespace-pre-line leading-relaxed">
-                      {item.measurable}
-                    </div>
-                  </td>
-                  {TARGET_KEYS.map((key, i) => (
-                    <td
-                      key={key}
-                      className={cn(
-                        "px-2 py-3 text-center text-fg-muted",
-                        i === 0 && "border-l border-line",
-                        i === 2 && "bg-brand-500/5 font-medium text-brand-600 dark:text-brand-400",
+                  >
+                    {!readonly && (
+                      <td className="px-2 py-3 text-fg-faint">
+                        <GripVertical className="h-3.5 w-3.5 cursor-grab active:cursor-grabbing" />
+                      </td>
+                    )}
+                    <td className="px-3 py-3 text-center font-bold text-fg-muted">
+                      {item.no}
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="font-medium text-fg">
+                        {item.objectives || (
+                          <span className="italic text-fg-faint">
+                            Untitled objective
+                          </span>
+                        )}
+                      </div>
+                      {hasSubItems && (
+                        <div className="mt-1 text-[10px] text-fg-faint">
+                          {item.subItems.length} sub-objective
+                          {item.subItems.length !== 1 ? "s" : ""}
+                        </div>
                       )}
-                    >
-                      <div className="whitespace-pre-line leading-relaxed text-[11px]">
-                        {item.targets[key]}
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="flex items-center gap-1.5">
+                          <div className="h-1 w-10 overflow-hidden rounded-full bg-hover">
+                            <div
+                              className="h-full bg-brand-500/70"
+                              style={{
+                                width: `${Math.min(100, item.weightage)}%`,
+                              }}
+                            />
+                          </div>
+                          <span className="tabular-nums text-[11px] text-fg-muted">
+                            {item.weightage}%
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-fg-faint">
+                          {levelW.toFixed(1)}% / level
+                        </span>
                       </div>
                     </td>
-                  ))}
-                  {!readonly && (
-                    <td className="px-2 py-3">
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => setEditing(item)}
-                          className="rounded p-1 text-fg-faint hover:bg-hover hover:text-fg"
-                          title="Edit"
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </button>
-                        <button
-                          onClick={async () => {
-                            if (
-                              await confirm({
-                                title: "Delete KPI item?",
-                                message: `Remove "${item.objectives || `Item ${item.no}`}"? This cannot be undone.`,
-                                tone: "danger",
-                                confirmLabel: "Delete",
-                              })
-                            ) {
-                              deleteItem(setId, item.id);
+                    <td className="px-3 py-3 text-fg-muted">
+                      <div className="whitespace-pre-line leading-relaxed">
+                        {item.measurable}
+                      </div>
+                    </td>
+                    {TARGET_KEYS.map((key, i) => (
+                      <td
+                        key={key}
+                        className={cn(
+                          "px-2 py-3 text-center align-top",
+                          i === 0 && "border-l border-line",
+                          i === 2 &&
+                            "bg-brand-500/5 text-brand-600 dark:text-brand-400",
+                        )}
+                      >
+                        <div className="whitespace-pre-line leading-relaxed text-[11px] text-fg-muted">
+                          {item.targets[key]}
+                        </div>
+                      </td>
+                    ))}
+                    {/* Current Target — only on parent when no sub-items */}
+                    <td className="px-3 py-3">
+                      {!hasSubItems ? (
+                        <TargetSelector
+                          selected={item.currentTarget}
+                          levelWeight={levelW}
+                          onChange={(t) =>
+                            updateItem(setId, item.id, { currentTarget: t })
+                          }
+                        />
+                      ) : (
+                        <div className="text-[10px] italic text-fg-faint">
+                          Set per sub-objective
+                        </div>
+                      )}
+                    </td>
+                    {!readonly && (
+                      <td className="px-2 py-3">
+                        <div className="flex flex-wrap items-center gap-1">
+                          {/* Notes */}
+                          <button
+                            onClick={() => toggleNotes(item.id)}
+                            title="Notes"
+                            className={cn(
+                              "rounded p-1 transition-colors",
+                              notesOpen.has(item.id)
+                                ? "bg-brand-500/10 text-brand-500"
+                                : "text-fg-faint hover:bg-hover hover:text-fg",
+                              item.justification &&
+                                "text-brand-500/70",
+                            )}
+                          >
+                            <MessageSquare className="h-3 w-3" />
+                          </button>
+                          {/* Edit parent */}
+                          <button
+                            onClick={() => setEditingItem(item)}
+                            title="Edit objective"
+                            className="rounded p-1 text-fg-faint hover:bg-hover hover:text-fg"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                          {/* Add sub-objective */}
+                          <button
+                            onClick={() =>
+                              setEditingSubItem({ item, sub: null })
                             }
-                          }}
-                          className="rounded p-1 text-fg-faint hover:bg-rose-500/10 hover:text-rose-500"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </td>
+                            title="Add sub-objective"
+                            className="rounded p-1 text-fg-faint hover:bg-hover hover:text-brand-500"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </button>
+                          {/* Delete parent */}
+                          <button
+                            onClick={async () => {
+                              if (
+                                await confirm({
+                                  title: "Delete objective?",
+                                  message: `Remove "${item.objectives || `Item ${item.no}`}" and all its sub-objectives? Cannot be undone.`,
+                                  tone: "danger",
+                                  confirmLabel: "Delete",
+                                })
+                              ) {
+                                deleteItem(setId, item.id);
+                              }
+                            }}
+                            title="Delete objective"
+                            className="rounded p-1 text-fg-faint hover:bg-rose-500/10 hover:text-rose-500"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+
+                  {/* Notes row for parent (only when no sub-items) */}
+                  {!hasSubItems && notesOpen.has(item.id) && (
+                    <NotesRow
+                      colSpan={totalCols}
+                      label={item.objectives || `Item ${item.no}`}
+                      value={item.justification ?? ""}
+                      onSave={(v) =>
+                        updateItem(setId, item.id, { justification: v })
+                      }
+                    />
                   )}
-                </tr>
+
+                  {/* ── Sub-item rows ── */}
+                  {item.subItems.map((sub, si) => {
+                    const subLevelW = perSubItemLevelWeight(item);
+                    return (
+                      <Fragment key={sub.id}>
+                        <tr
+                          className={cn(
+                            "border-t border-line/50",
+                            si % 2 === 0 ? "bg-subtle/60" : "bg-surface/60",
+                          )}
+                        >
+                          {!readonly && <td />}
+                          <td />
+                          {/* Sub-item objectives (indented) */}
+                          <td className="px-3 py-2.5 pl-7">
+                            <div className="flex items-start gap-1.5">
+                              <ChevronRight className="mt-0.5 h-3 w-3 shrink-0 text-fg-faint" />
+                              <div>
+                                <div className="text-[12px] font-medium text-fg-muted">
+                                  {sub.objectives || (
+                                    <span className="italic text-fg-faint">
+                                      Untitled sub-objective
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          {/* Calculated weight per level */}
+                          <td className="px-3 py-2.5 text-center">
+                            <SubWeightCell item={item} />
+                          </td>
+                          {/* Sub-item measurable */}
+                          <td className="px-3 py-2.5 text-[11px] text-fg-subtle">
+                            <div className="whitespace-pre-line leading-relaxed">
+                              {sub.measurable}
+                            </div>
+                          </td>
+                          {/* Sub-item T1-T5 */}
+                          {TARGET_KEYS.map((key, i) => (
+                            <td
+                              key={key}
+                              className={cn(
+                                "px-2 py-2.5 text-center align-top",
+                                i === 0 && "border-l border-line",
+                                i === 2 &&
+                                  "bg-brand-500/5 text-brand-600/80 dark:text-brand-400/80",
+                              )}
+                            >
+                              <div className="whitespace-pre-line leading-relaxed text-[11px] text-fg-muted">
+                                {sub.targets[key]}
+                              </div>
+                            </td>
+                          ))}
+                          {/* Sub-item target selector */}
+                          <td className="px-3 py-2.5">
+                            <TargetSelector
+                              selected={sub.currentTarget}
+                              levelWeight={subLevelW}
+                              onChange={(t) =>
+                                updateSubItem(setId, item.id, sub.id, {
+                                  currentTarget: t,
+                                })
+                              }
+                            />
+                          </td>
+                          {!readonly && (
+                            <td className="px-2 py-2.5">
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => toggleNotes(sub.id)}
+                                  title="Notes"
+                                  className={cn(
+                                    "rounded p-1 transition-colors",
+                                    notesOpen.has(sub.id)
+                                      ? "bg-brand-500/10 text-brand-500"
+                                      : "text-fg-faint hover:bg-hover hover:text-fg",
+                                    sub.justification && "text-brand-500/70",
+                                  )}
+                                >
+                                  <MessageSquare className="h-3 w-3" />
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    setEditingSubItem({ item, sub })
+                                  }
+                                  title="Edit sub-objective"
+                                  className="rounded p-1 text-fg-faint hover:bg-hover hover:text-fg"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    if (
+                                      await confirm({
+                                        title: "Delete sub-objective?",
+                                        message: `Remove "${sub.objectives || "this sub-objective"}"? Cannot be undone.`,
+                                        tone: "danger",
+                                        confirmLabel: "Delete",
+                                      })
+                                    ) {
+                                      deleteSubItem(setId, item.id, sub.id);
+                                    }
+                                  }}
+                                  title="Delete sub-objective"
+                                  className="rounded p-1 text-fg-faint hover:bg-rose-500/10 hover:text-rose-500"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+
+                        {/* Notes row for sub-item */}
+                        {notesOpen.has(sub.id) && (
+                          <NotesRow
+                            colSpan={totalCols}
+                            label={sub.objectives || "sub-objective"}
+                            value={sub.justification ?? ""}
+                            onSave={(v) =>
+                              updateSubItem(setId, item.id, sub.id, {
+                                justification: v,
+                              })
+                            }
+                          />
+                        )}
+                      </Fragment>
+                    );
+                  })}
+
+                  {/* Notes row for parent WITH sub-items (general notes on the objective) */}
+                  {hasSubItems && notesOpen.has(item.id) && (
+                    <NotesRow
+                      colSpan={totalCols}
+                      label={item.objectives || `Item ${item.no}`}
+                      value={item.justification ?? ""}
+                      onSave={(v) =>
+                        updateItem(setId, item.id, { justification: v })
+                      }
+                    />
+                  )}
+                </Fragment>
               );
             })}
           </tbody>
+
+          {/* ── Footer ── */}
           {items.length > 0 && (
             <tfoot>
               <tr className="border-t border-line-strong bg-subtle">
                 {!readonly && <td />}
                 <td />
                 <td className="px-3 py-2 text-right text-[11px] font-semibold text-fg-subtle">
-                  Total
+                  Total weightage
                 </td>
                 <td className="px-3 py-2 text-center">
-                  <div className="flex items-center gap-1.5">
-                    <div className="h-1 w-12 overflow-hidden rounded-full bg-hover">
-                      <div
+                  <div className="flex flex-col items-center gap-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-1 w-10 overflow-hidden rounded-full bg-hover">
+                        <div
+                          className={cn(
+                            "h-full rounded-full",
+                            totalWeight === 100
+                              ? "bg-emerald-500"
+                              : totalWeight > 100
+                                ? "bg-rose-500"
+                                : "bg-amber-500",
+                          )}
+                          style={{ width: `${Math.min(100, totalWeight)}%` }}
+                        />
+                      </div>
+                      <span
                         className={cn(
-                          "h-full rounded-full",
+                          "tabular-nums text-[11px] font-semibold",
                           totalWeight === 100
-                            ? "bg-emerald-500"
+                            ? "text-emerald-600"
                             : totalWeight > 100
-                              ? "bg-rose-500"
-                              : "bg-amber-500",
+                              ? "text-rose-600"
+                              : "text-amber-600",
                         )}
-                        style={{ width: `${Math.min(100, totalWeight)}%` }}
-                      />
+                      >
+                        {totalWeight}%
+                      </span>
                     </div>
-                    <span
-                      className={cn(
-                        "tabular-nums text-[11px] font-semibold",
-                        totalWeight === 100
-                          ? "text-emerald-600"
-                          : totalWeight > 100
-                            ? "text-rose-600"
-                            : "text-amber-600",
-                      )}
-                    >
-                      {totalWeight}%
-                    </span>
                   </div>
                 </td>
-                <td colSpan={readonly ? 5 : 6} />
+                <td colSpan={readonly ? 7 : 8} />
               </tr>
             </tfoot>
           )}
@@ -259,19 +624,28 @@ export function KpiTable({ setId, items, readonly }: Props) {
 
       {!readonly && (
         <button
-          onClick={() => setEditing("new")}
+          onClick={() => setEditingItem("new")}
           className="inline-flex items-center gap-1.5 rounded border border-dashed border-line px-3 py-1.5 text-[12px] text-fg-subtle hover:border-brand-500/50 hover:text-brand-500"
         >
           <Plus className="h-3.5 w-3.5" />
-          Add KPI item
+          Add objective
         </button>
       )}
 
-      {editing !== null && (
+      {editingItem !== null && (
         <KpiItemModal
           setId={setId}
-          item={editing === "new" ? null : editing}
-          onClose={() => setEditing(null)}
+          item={editingItem === "new" ? null : editingItem}
+          onClose={() => setEditingItem(null)}
+        />
+      )}
+
+      {editingSubItem !== null && (
+        <KpiSubItemModal
+          setId={setId}
+          itemId={editingSubItem.item.id}
+          subItem={editingSubItem.sub}
+          onClose={() => setEditingSubItem(null)}
         />
       )}
     </div>
