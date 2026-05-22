@@ -23,6 +23,11 @@ function fnf<T>(p: Promise<T>) {
   p.catch((err) => console.error("[momentum/kpi-store] sync error", err));
 }
 
+// Module-level guards — never persisted, reset on every page load.
+// Prevents the old persisted hydrated:true from blocking the Supabase sync.
+let _syncDone = false;
+let _syncRunning = false;
+
 interface KpiState {
   sets: KpiSet[];
   hydrated: boolean;
@@ -79,27 +84,38 @@ export const useKpiStore = create<KpiState & KpiActions>()(
       loading: false,
 
       setHydrated: async () => {
-        if (get().hydrated || get().loading) return;
+        if (_syncDone || _syncRunning) return;
+        _syncRunning = true;
         set({ loading: true });
+
         if (!isSupabaseConfigured()) {
           set({ hydrated: true, loading: false });
+          _syncDone = true;
+          _syncRunning = false;
           return;
         }
+
         const remote = await fetchAllKpiSets();
         if (remote === null) {
-          // Query failed (migration not applied or network error) — keep
-          // whatever is in localStorage so the page still works locally.
+          // Query failed — keep localStorage state
           set({ hydrated: true, loading: false });
+          _syncDone = true;
+          _syncRunning = false;
           return;
         }
+
         if (remote.length > 0) {
           set({ sets: remote, hydrated: true, loading: false });
         } else {
-          // Supabase is empty — upload local localStorage data as the seed
+          // Supabase empty — upload local data and await so mobile can
+          // fetch it immediately after
           const local = get().sets;
-          for (const ks of local) fnf(upsertKpiSet(ks));
+          await Promise.all(local.map((ks) => upsertKpiSet(ks)));
           set({ hydrated: true, loading: false });
         }
+
+        _syncDone = true;
+        _syncRunning = false;
       },
 
       createSet: (year, title) => {
@@ -245,6 +261,7 @@ export const useKpiStore = create<KpiState & KpiActions>()(
     {
       name: "momentum-kpi-store",
       storage: createJSONStorage(() => localStorage),
+      partialize: (s) => ({ sets: s.sets }),
     },
   ),
 );
