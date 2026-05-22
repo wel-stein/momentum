@@ -24,6 +24,7 @@ export function KpiYearShell({ year }: Props) {
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
+  const [timedOut, setTimedOut] = useState(false);
 
   const kpiSet = sets.find((s) => s.year === year);
 
@@ -31,7 +32,23 @@ export function KpiYearShell({ year }: Props) {
     if (!kpiSet) createSet(year);
   }, [year, kpiSet, createSet]);
 
+  useEffect(() => {
+    if (kpiSet) return;
+    const t = setTimeout(() => setTimedOut(true), 3000);
+    return () => clearTimeout(t);
+  }, [kpiSet]);
+
   if (!kpiSet) {
+    if (timedOut) {
+      return (
+        <div className="flex h-screen flex-col items-center justify-center gap-3 text-center">
+          <p className="text-[14px] font-medium text-fg">Could not load KPI set.</p>
+          <Link href="/kpi" className="text-[12px] text-brand-500 hover:underline">
+            ← Back to KPI sets
+          </Link>
+        </div>
+      );
+    }
     return (
       <div className="flex h-screen items-center justify-center text-fg-faint text-sm">
         Loading…

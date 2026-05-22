@@ -4,7 +4,7 @@ import { isMailConfigured, sendWeeklyReport, type WeeklyReportTask } from "@/lib
 export const runtime = "nodejs";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-const BCC = "wlteo@handalindah.com.my";
+const BCC = process.env.MAIL_BCC ?? "";
 
 interface Payload {
   recipients?: string[];
