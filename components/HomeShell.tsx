@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, LayoutGrid, Layout, Calendar } from "lucide-react";
+import { Plus, Trash2, LayoutGrid, Layout, Calendar, Target } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Modal } from "./Modal";
 import { AvatarStack } from "./Avatar";
@@ -73,6 +73,14 @@ export function HomeShell() {
               Momentum
             </div>
             <span className="font-mono text-[10px] text-fg-faint">v0.1</span>
+            <span className="text-fg-faint">·</span>
+            <Link
+              href="/kpi"
+              className="flex items-center gap-1 text-[12px] text-fg-subtle hover:text-fg"
+            >
+              <Target className="h-3.5 w-3.5" />
+              KPI
+            </Link>
           </div>
           <div className="flex items-center gap-2">
             {user && (
