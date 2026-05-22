@@ -4,7 +4,7 @@ import nodemailer, { type Transporter } from "nodemailer";
 const host = process.env.MAIL_HOST;
 const user = process.env.MAIL_USER;
 const pass = process.env.MAIL_PASS;
-const port = Number(process.env.MAIL_PORT ?? "465");
+const port = process.env.MAIL_PORT ? Number(process.env.MAIL_PORT) : undefined;
 const from = process.env.MAIL_FROM ?? user;
 
 let _transporter: Transporter | null = null;
@@ -22,8 +22,7 @@ function transporter(): Transporter {
   if (_transporter) return _transporter;
   _transporter = nodemailer.createTransport({
     host,
-    port,
-    secure: port === 465,
+    ...(port !== undefined ? { port, secure: port === 465 } : {}),
     auth: { user, pass },
   });
   return _transporter;
