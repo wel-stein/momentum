@@ -7,11 +7,13 @@ import type { Board, Task } from "@/lib/types";
 import { STATUSES } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const DEFAULT_RECIPIENTS = [
-  "handy@handalindah.com.my",
-  "syteo@handalindah.com.my",
-];
-const BCC_ADDRESS = "wlteo@handalindah.com.my";
+const DEFAULT_RECIPIENTS = (
+  process.env.NEXT_PUBLIC_MAIL_REPORT_RECIPIENTS ?? ""
+)
+  .split(",")
+  .map((e) => e.trim())
+  .filter((e) => EMAIL_RE.test(e));
+const BCC_ADDRESS = process.env.NEXT_PUBLIC_MAIL_BCC ?? "";
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 const GROUP_KEYS = {
