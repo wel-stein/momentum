@@ -138,18 +138,38 @@ export function KpiYearShell({ year }: Props) {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {/* Achieved score */}
             <div
               className={cn(
                 "rounded px-2 py-0.5 text-[11px] font-medium tabular-nums",
-                totalWeight === 100
+                achievedPct >= 80
                   ? "bg-emerald-500/10 text-emerald-600"
-                  : totalWeight > 100
-                    ? "bg-rose-500/10 text-rose-600"
-                    : "bg-amber-500/10 text-amber-600",
+                  : achievedPct >= 60
+                    ? "bg-brand-500/10 text-brand-500"
+                    : achievedPct >= 40
+                      ? "bg-amber-500/10 text-amber-600"
+                      : achievedPct > 0
+                        ? "bg-rose-500/10 text-rose-600"
+                        : "bg-hover text-fg-faint",
               )}
             >
-              {totalWeight}% / 100%
+              {achieved.toFixed(1)}% / 100%
             </div>
+            {/* Weightage balance indicator */}
+            {totalWeight !== 100 && (
+              <div
+                className={cn(
+                  "rounded px-2 py-0.5 text-[11px] tabular-nums",
+                  totalWeight > 100
+                    ? "bg-rose-500/10 text-rose-500"
+                    : "bg-amber-500/10 text-amber-600",
+                )}
+                title="Total weightage should equal 100%"
+              >
+                W: {totalWeight}%
+              </div>
+            )}
+
             <button
               onClick={handleExport}
               className="inline-flex items-center gap-1.5 rounded border border-line px-2.5 py-1 text-[12px] text-fg-subtle hover:border-line-strong hover:text-fg"
