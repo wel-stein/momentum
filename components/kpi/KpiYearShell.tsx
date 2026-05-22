@@ -21,10 +21,15 @@ export function KpiYearShell({ year }: Props) {
   const sets = useKpiStore((s) => s.sets);
   const createSet = useKpiStore((s) => s.createSet);
   const renameSet = useKpiStore((s) => s.renameSet);
+  const setHydrated = useKpiStore((s) => s.setHydrated);
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    void setHydrated();
+  }, [setHydrated]);
 
   const kpiSet = sets.find((s) => s.year === year);
 

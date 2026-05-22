@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Plus, Trash2, Target, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -17,8 +17,13 @@ export function KpiShell() {
   const sets = useKpiStore((s) => s.sets);
   const createSet = useKpiStore((s) => s.createSet);
   const deleteSet = useKpiStore((s) => s.deleteSet);
+  const setHydrated = useKpiStore((s) => s.setHydrated);
   const confirm = useConfirm();
   const router = useRouter();
+
+  useEffect(() => {
+    void setHydrated();
+  }, [setHydrated]);
 
   const [showNew, setShowNew] = useState(false);
   const [yearInput, setYearInput] = useState(String(CURRENT_YEAR));

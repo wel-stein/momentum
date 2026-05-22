@@ -7,6 +7,7 @@ import type { Board, Task } from "@/lib/types";
 import { STATUSES } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const DEFAULT_RECIPIENTS = (
   process.env.NEXT_PUBLIC_MAIL_REPORT_RECIPIENTS ?? ""
 )
@@ -14,7 +15,6 @@ const DEFAULT_RECIPIENTS = (
   .map((e) => e.trim())
   .filter((e) => EMAIL_RE.test(e));
 const BCC_ADDRESS = process.env.NEXT_PUBLIC_MAIL_BCC ?? "";
-const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 const GROUP_KEYS = {
   thisWeek: "this week",
