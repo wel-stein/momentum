@@ -110,25 +110,90 @@ function NotesRow({
 }
 
 // ---------------------------------------------------------------------------
-// Weight cell for sub-items
+// Shared helper: colour based on selected target level
 // ---------------------------------------------------------------------------
 
-function SubWeightCell({ item }: { item: KpiItem }) {
+function targetBarColor(t: number | undefined) {
+  if (!t) return "";
+  if (t >= 5) return "bg-emerald-500";
+  if (t >= 4) return "bg-brand-500";
+  if (t >= 3) return "bg-brand-500/60";
+  if (t >= 2) return "bg-amber-500";
+  return "bg-rose-500";
+}
+
+function targetTextColor(t: number | undefined) {
+  if (!t) return "text-fg-faint";
+  if (t >= 5) return "text-emerald-600 dark:text-emerald-400";
+  if (t >= 4) return "text-brand-500";
+  if (t >= 3) return "text-brand-500/80";
+  if (t >= 2) return "text-amber-600";
+  return "text-rose-600";
+}
+
+// ---------------------------------------------------------------------------
+// Weight cell — parent row
+// ---------------------------------------------------------------------------
+
+function ParentWeightCell({ item }: { item: KpiItem }) {
+  const levelW = perLevelWeight(item);
+  const achieved = itemAchievedScore(item);
+  const max = item.weightage;
+  const pct = max > 0 ? Math.min(100, (achieved / max) * 100) : 0;
+  // For a parent with no sub-items, colour by its own currentTarget;
+  // for one with sub-items, derive a rough level from the achieved ratio.
+  const t = item.subItems.length === 0
+    ? item.currentTarget
+    : max > 0 ? Math.round((achieved / max) * 5) as 1|2|3|4|5 : undefined;
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <div className="flex items-baseline gap-0.5 tabular-nums">
+        <span className={cn("text-[13px] font-semibold", targetTextColor(t))}>
+          {achieved > 0 ? achieved.toFixed(1) : "—"}
+        </span>
+        <span className="text-[11px] text-fg-faint">/{max}%</span>
+      </div>
+      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-hover">
+        <div
+          className={cn("h-full rounded-full transition-all", targetBarColor(t) || "bg-hover")}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className="text-[10px] text-fg-faint">{levelW.toFixed(1)}%/level</span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Weight cell — sub-item row
+// ---------------------------------------------------------------------------
+
+function SubWeightCell({ item, sub }: { item: KpiItem; sub: KpiSubItem }) {
   const n = item.subItems.length;
   if (n === 0) return null;
-  const w = perSubItemLevelWeight(item).toFixed(1);
+  const levelW = perSubItemLevelWeight(item);
+  const subMax = levelW * 5;                                // = item.weightage / n
+  const achieved = (sub.currentTarget ?? 0) * levelW;
+  const pct = subMax > 0 ? Math.min(100, (achieved / subMax) * 100) : 0;
+
   return (
-    <div className="flex flex-col gap-0.5">
-      <span
-        className="tabular-nums text-[11px] text-fg-subtle"
-        title={`${item.weightage}% ÷ 5 levels ÷ ${n} sub-objectives = ${w}% per level`}
-      >
-        {w}%
-        <span className="ml-0.5 text-fg-faint">/level</span>
-      </span>
-      <span className="text-[10px] text-fg-faint">
-        max {(5 * parseFloat(w)).toFixed(1)}%
-      </span>
+    <div className="flex flex-col items-center gap-1"
+      title={`${item.weightage}% ÷ 5 levels ÷ ${n} sub-objectives = ${levelW.toFixed(1)}%/level`}
+    >
+      <div className="flex items-baseline gap-0.5 tabular-nums">
+        <span className={cn("text-[12px] font-semibold", targetTextColor(sub.currentTarget))}>
+          {achieved > 0 ? achieved.toFixed(1) : "—"}
+        </span>
+        <span className="text-[10px] text-fg-faint">/{subMax.toFixed(1)}%</span>
+      </div>
+      <div className="h-1 w-12 overflow-hidden rounded-full bg-hover">
+        <div
+          className={cn("h-full rounded-full transition-all", targetBarColor(sub.currentTarget) || "bg-hover")}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className="text-[10px] text-fg-faint">{levelW.toFixed(1)}%/level</span>
     </div>
   );
 }
@@ -301,24 +366,7 @@ export function KpiTable({ setId, items, readonly }: Props) {
                       )}
                     </td>
                     <td className="px-3 py-3 text-center">
-                      <div className="flex flex-col items-center gap-1">
-                        <div className="flex items-center gap-1.5">
-                          <div className="h-1 w-10 overflow-hidden rounded-full bg-hover">
-                            <div
-                              className="h-full bg-brand-500/70"
-                              style={{
-                                width: `${Math.min(100, item.weightage)}%`,
-                              }}
-                            />
-                          </div>
-                          <span className="tabular-nums text-[11px] text-fg-muted">
-                            {item.weightage}%
-                          </span>
-                        </div>
-                        <span className="text-[10px] text-fg-faint">
-                          {levelW.toFixed(1)}% / level
-                        </span>
-                      </div>
+                      <ParentWeightCell item={item} />
                     </td>
                     <td className="px-3 py-3 text-fg-muted">
                       <div className="whitespace-pre-line leading-relaxed">
@@ -456,9 +504,9 @@ export function KpiTable({ setId, items, readonly }: Props) {
                               </div>
                             </div>
                           </td>
-                          {/* Calculated weight per level */}
+                          {/* Calculated weight per level — reflects current target */}
                           <td className="px-3 py-2.5 text-center">
-                            <SubWeightCell item={item} />
+                            <SubWeightCell item={item} sub={sub} />
                           </td>
                           {/* Sub-item measurable */}
                           <td className="px-3 py-2.5 text-[11px] text-fg-subtle">
