@@ -276,9 +276,6 @@ export function KpiYearShell({ year }: Props) {
                         <div className="w-20 text-right tabular-nums text-[10px] text-fg-subtle">
                           {itemScore.toFixed(1)}/{itemMax}%
                         </div>
-                        <div className="w-8 text-right tabular-nums text-[10px] text-fg-faint">
-                          {pct.toFixed(0)}%
-                        </div>
                       </div>
                     );
                   })}
