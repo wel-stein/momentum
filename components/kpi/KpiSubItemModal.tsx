@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { Modal } from "@/components/Modal";
 import { useKpiStore } from "@/lib/kpi-store";
-import type { KpiItem, KpiTargets } from "@/lib/kpi-types";
+import type { KpiSubItem, KpiTargets } from "@/lib/kpi-types";
 import { cn } from "@/lib/utils";
 
 interface Props {
   setId: string;
-  item: KpiItem | null;
+  itemId: string;
+  /** Null = create new sub-item */
+  subItem: KpiSubItem | null;
   onClose: () => void;
 }
 
@@ -26,18 +28,17 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-export function KpiItemModal({ setId, item, onClose }: Props) {
-  const addItem = useKpiStore((s) => s.addItem);
-  const updateItem = useKpiStore((s) => s.updateItem);
+export function KpiSubItemModal({ setId, itemId, subItem, onClose }: Props) {
+  const addSubItem = useKpiStore((s) => s.addSubItem);
+  const updateSubItem = useKpiStore((s) => s.updateSubItem);
 
-  const [objectives, setObjectives] = useState(item?.objectives ?? "");
-  const [weightage, setWeightage] = useState(item ? String(item.weightage) : "0");
-  const [measurable, setMeasurable] = useState(item?.measurable ?? "");
+  const [objectives, setObjectives] = useState(subItem?.objectives ?? "");
+  const [measurable, setMeasurable] = useState(subItem?.measurable ?? "");
   const [targets, setTargets] = useState<KpiTargets>(
-    item?.targets ?? { t1: "", t2: "", t3: "", t4: "", t5: "" },
+    subItem?.targets ?? { t1: "", t2: "", t3: "", t4: "", t5: "" },
   );
 
-  const isNew = item === null;
+  const isNew = subItem === null;
 
   function setTarget(key: keyof KpiTargets, val: string) {
     setTargets((t) => ({ ...t, [key]: val }));
@@ -46,15 +47,14 @@ export function KpiItemModal({ setId, item, onClose }: Props) {
   function handleSave() {
     const patch = {
       objectives: objectives.trim(),
-      weightage: Math.min(100, Math.max(0, parseFloat(weightage) || 0)),
       measurable: measurable.trim(),
       targets,
     };
     if (isNew) {
-      const id = addItem(setId);
-      if (id) updateItem(setId, id, patch);
+      const id = addSubItem(setId, itemId);
+      if (id) updateSubItem(setId, itemId, id, patch);
     } else {
-      updateItem(setId, item.id, patch);
+      updateSubItem(setId, itemId, subItem.id, patch);
     }
     onClose();
   }
@@ -63,7 +63,7 @@ export function KpiItemModal({ setId, item, onClose }: Props) {
     <Modal
       open
       onClose={onClose}
-      title={isNew ? "Add objective" : "Edit objective"}
+      title={isNew ? "Add sub-objective" : "Edit sub-objective"}
       size="lg"
       footer={
         <>
@@ -78,41 +78,29 @@ export function KpiItemModal({ setId, item, onClose }: Props) {
             disabled={!objectives.trim()}
             className="rounded bg-brand-500 px-3 py-1 text-[12px] font-medium text-white hover:bg-brand-400 disabled:opacity-40"
           >
-            {isNew ? "Add objective" : "Save changes"}
+            {isNew ? "Add sub-objective" : "Save changes"}
           </button>
         </>
       }
     >
       <div className="space-y-4">
-        <div className="grid grid-cols-[1fr_auto] gap-3">
-          <Field label="Objective">
-            <input
-              autoFocus
-              value={objectives}
-              onChange={(e) => setObjectives(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && objectives.trim() && handleSave()}
-              placeholder="e.g. Optimize infrastructure costs"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Weightage (%)">
-            <input
-              type="number"
-              min="0"
-              max="100"
-              value={weightage}
-              onChange={(e) => setWeightage(e.target.value)}
-              className={cn(inputCls, "w-24 tabular-nums")}
-            />
-          </Field>
-        </div>
+        <Field label="Sub-objective">
+          <input
+            autoFocus
+            value={objectives}
+            onChange={(e) => setObjectives(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && objectives.trim() && handleSave()}
+            placeholder="e.g. Reduce Level-2 support turnaround time"
+            className={inputCls}
+          />
+        </Field>
 
         <Field label="Measurable">
           <textarea
             rows={3}
             value={measurable}
             onChange={(e) => setMeasurable(e.target.value)}
-            placeholder="Describe how this objective will be measured"
+            placeholder="Describe how this sub-objective will be measured"
             className={cn(inputCls, "resize-none")}
           />
         </Field>

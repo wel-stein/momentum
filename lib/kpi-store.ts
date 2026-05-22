@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { nanoid } from "nanoid";
-import type { KpiItem, KpiSet, KpiTargets } from "./kpi-types";
+import type { KpiItem, KpiSet, KpiSubItem, KpiTargets } from "./kpi-types";
 
 function nowIso() {
   return new Date().toISOString();
@@ -23,9 +23,39 @@ interface KpiActions {
   renameSet: (setId: string, title: string) => void;
 
   addItem: (setId: string) => string;
-  updateItem: (setId: string, itemId: string, patch: Partial<Omit<KpiItem, "id">>) => void;
+  updateItem: (
+    setId: string,
+    itemId: string,
+    patch: Partial<Omit<KpiItem, "id">>,
+  ) => void;
   deleteItem: (setId: string, itemId: string) => void;
   reorderItems: (setId: string, items: KpiItem[]) => void;
+
+  addSubItem: (setId: string, itemId: string) => string;
+  updateSubItem: (
+    setId: string,
+    itemId: string,
+    subItemId: string,
+    patch: Partial<Omit<KpiSubItem, "id">>,
+  ) => void;
+  deleteSubItem: (setId: string, itemId: string, subItemId: string) => void;
+}
+
+function patchItem(
+  sets: KpiSet[],
+  setId: string,
+  itemId: string,
+  fn: (item: KpiItem) => KpiItem,
+): KpiSet[] {
+  return sets.map((k) =>
+    k.id !== setId
+      ? k
+      : {
+          ...k,
+          updatedAt: nowIso(),
+          items: k.items.map((item) => (item.id === itemId ? fn(item) : item)),
+        },
+  );
 }
 
 export const useKpiStore = create<KpiState & KpiActions>()(
@@ -85,17 +115,10 @@ export const useKpiStore = create<KpiState & KpiActions>()(
 
       updateItem: (setId, itemId, patch) => {
         set((s) => ({
-          sets: s.sets.map((k) =>
-            k.id !== setId
-              ? k
-              : {
-                  ...k,
-                  updatedAt: nowIso(),
-                  items: k.items.map((item) =>
-                    item.id === itemId ? { ...item, ...patch } : item,
-                  ),
-                },
-          ),
+          sets: patchItem(s.sets, setId, itemId, (item) => ({
+            ...item,
+            ...patch,
+          })),
         }));
       },
 
@@ -115,9 +138,50 @@ export const useKpiStore = create<KpiState & KpiActions>()(
         set((s) => ({
           sets: s.sets.map((k) =>
             k.id === setId
-              ? { ...k, items: items.map((item, i) => ({ ...item, no: i + 1 })), updatedAt: nowIso() }
+              ? {
+                  ...k,
+                  items: items.map((item, i) => ({ ...item, no: i + 1 })),
+                  updatedAt: nowIso(),
+                }
               : k,
           ),
+        }));
+      },
+
+      addSubItem: (setId, itemId) => {
+        const id = nanoid(8);
+        const sub: KpiSubItem = {
+          id,
+          objectives: "",
+          measurable: "",
+          targets: emptyTargets(),
+        };
+        set((s) => ({
+          sets: patchItem(s.sets, setId, itemId, (item) => ({
+            ...item,
+            subItems: [...item.subItems, sub],
+          })),
+        }));
+        return id;
+      },
+
+      updateSubItem: (setId, itemId, subItemId, patch) => {
+        set((s) => ({
+          sets: patchItem(s.sets, setId, itemId, (item) => ({
+            ...item,
+            subItems: item.subItems.map((sub) =>
+              sub.id === subItemId ? { ...sub, ...patch } : sub,
+            ),
+          })),
+        }));
+      },
+
+      deleteSubItem: (setId, itemId, subItemId) => {
+        set((s) => ({
+          sets: patchItem(s.sets, setId, itemId, (item) => ({
+            ...item,
+            subItems: item.subItems.filter((sub) => sub.id !== subItemId),
+          })),
         }));
       },
     }),

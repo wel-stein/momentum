@@ -7,6 +7,10 @@ import { useKpiStore } from "@/lib/kpi-store";
 import { KpiTable } from "./KpiTable";
 import { SyncBanner } from "@/components/SyncBanner";
 import { UserMenu } from "@/components/UserMenu";
+import {
+  kpiSetAchievedScore,
+  kpiAssessedCount,
+} from "@/lib/kpi-types";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -35,7 +39,11 @@ export function KpiYearShell({ year }: Props) {
     );
   }
 
-  const totalWeight = kpiSet.items.reduce((sum, i) => sum + i.weightage, 0);
+  const totalWeight = kpiSet.items.reduce((s, i) => s + i.weightage, 0);
+  const achieved = kpiSetAchievedScore(kpiSet.items);
+  const maxPossible = totalWeight; // selecting level 5 on all = full weightage
+  const achievedPct = maxPossible > 0 ? (achieved / maxPossible) * 100 : 0;
+  const { assessed, total } = kpiAssessedCount(kpiSet.items);
 
   function startEdit() {
     setTitleDraft(kpiSet!.title);
@@ -100,7 +108,7 @@ export function KpiYearShell({ year }: Props) {
             ) : (
               <button
                 onClick={startEdit}
-                className="group flex items-center gap-1.5 text-[13px] font-medium text-fg hover:text-fg"
+                className="group flex items-center gap-1.5 text-[13px] font-medium text-fg"
               >
                 {kpiSet.title}
                 <Pencil className="h-3 w-3 text-fg-faint opacity-0 group-hover:opacity-100" />
@@ -134,15 +142,109 @@ export function KpiYearShell({ year }: Props) {
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-8">
-        <div className="mb-6">
+        <div className="mb-5">
           <h1 className="text-xl font-medium tracking-tight text-fg">
             Work Performance KPI — {year}
           </h1>
           <p className="mt-0.5 text-[12px] text-fg-subtle">
-            {kpiSet.items.length} objective{kpiSet.items.length !== 1 ? "s" : ""}{" "}
-            · Drag rows to reorder · Level 3 is the baseline target
+            {kpiSet.items.length} objective
+            {kpiSet.items.length !== 1 ? "s" : ""} · Drag rows to reorder ·
+            Level 3 is the baseline target
           </p>
         </div>
+
+        {/* Score summary card */}
+        {total > 0 && (
+          <div className="mb-6 rounded-lg border border-line bg-surface p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-[11px] font-medium uppercase tracking-wider text-fg-subtle">
+                KPI Score Summary
+              </div>
+              <div className="text-[11px] text-fg-faint">
+                {assessed}/{total} assessed
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {/* Overall achieved score */}
+              <div>
+                <div className="mb-1 text-[10px] text-fg-faint">
+                  Achieved score
+                </div>
+                <div className="text-2xl font-bold tabular-nums tracking-tight text-fg">
+                  {achieved.toFixed(1)}
+                  <span className="text-sm font-normal text-fg-subtle">
+                    /{maxPossible.toFixed(0)}%
+                  </span>
+                </div>
+                <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-hover">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all",
+                      achievedPct >= 80
+                        ? "bg-emerald-500"
+                        : achievedPct >= 60
+                          ? "bg-brand-500"
+                          : achievedPct >= 40
+                            ? "bg-amber-500"
+                            : "bg-rose-500",
+                    )}
+                    style={{ width: `${achievedPct}%` }}
+                  />
+                </div>
+                <div className="mt-1 text-[10px] tabular-nums text-fg-faint">
+                  {achievedPct.toFixed(1)}% of max
+                </div>
+              </div>
+
+              {/* Per-objective breakdown */}
+              <div className="col-span-2">
+                <div className="mb-1 text-[10px] text-fg-faint">
+                  By objective
+                </div>
+                <div className="space-y-1.5">
+                  {kpiSet.items.map((item) => {
+                    const itemScore = kpiSetAchievedScore([item]);
+                    const itemMax = item.weightage;
+                    const pct =
+                      itemMax > 0 ? (itemScore / itemMax) * 100 : 0;
+                    return (
+                      <div key={item.id} className="flex items-center gap-2">
+                        <div className="w-4 text-right text-[10px] font-semibold tabular-nums text-fg-faint">
+                          {item.no}
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                          <div className="h-1.5 overflow-hidden rounded-full bg-hover">
+                            <div
+                              className={cn(
+                                "h-full rounded-full transition-all",
+                                pct >= 80
+                                  ? "bg-emerald-500"
+                                  : pct >= 60
+                                    ? "bg-brand-500"
+                                    : pct >= 40
+                                      ? "bg-amber-500"
+                                      : pct > 0
+                                        ? "bg-rose-500"
+                                        : "bg-transparent",
+                              )}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div className="w-20 text-right tabular-nums text-[10px] text-fg-subtle">
+                          {itemScore.toFixed(1)}/{itemMax}%
+                        </div>
+                        <div className="w-8 text-right tabular-nums text-[10px] text-fg-faint">
+                          {pct.toFixed(0)}%
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <KpiTable setId={kpiSet.id} items={kpiSet.items} />
       </main>
