@@ -1,13 +1,14 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useState, useRef, useEffect } from "react";
 import {
-  Pencil,
   Trash2,
   Plus,
   GripVertical,
   MessageSquare,
   ChevronRight,
+  MoreVertical,
+  Pencil,
 } from "lucide-react";
 import { useKpiStore } from "@/lib/kpi-store";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -194,6 +195,84 @@ function SubWeightCell({ item, sub }: { item: KpiItem; sub: KpiSubItem }) {
         />
       </div>
       <span className="text-[10px] text-fg-faint">{levelW.toFixed(1)}%/level</span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Row action menu (⋮ dropdown)
+// ---------------------------------------------------------------------------
+
+interface ActionItem {
+  label: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+  danger?: boolean;
+  active?: boolean;
+}
+
+function RowActionMenu({ actions }: { actions: ActionItem[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative flex justify-center">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "rounded p-1.5 transition-colors",
+          open
+            ? "bg-hover text-fg"
+            : "text-fg-faint hover:bg-hover hover:text-fg",
+        )}
+        aria-label="Row actions"
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-1 min-w-[172px] overflow-hidden rounded-md border border-line bg-surface shadow-lg">
+          {actions.map((a) => (
+            <button
+              key={a.label}
+              onClick={() => {
+                a.onClick();
+                if (!a.active !== undefined) setOpen(false);
+                else setOpen(false);
+              }}
+              className={cn(
+                "flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-[12px] transition-colors",
+                a.danger
+                  ? "text-rose-500 hover:bg-rose-500/8"
+                  : a.active
+                    ? "bg-brand-500/8 text-brand-500 hover:bg-brand-500/12"
+                    : "text-fg hover:bg-hover",
+              )}
+            >
+              <span className="shrink-0">{a.icon}</span>
+              {a.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -406,60 +485,47 @@ export function KpiTable({ setId, items, readonly }: Props) {
                     </td>
                     {!readonly && (
                       <td className="px-2 py-3">
-                        <div className="flex flex-wrap items-center gap-1">
-                          {/* Notes */}
-                          <button
-                            onClick={() => toggleNotes(item.id)}
-                            title="Notes"
-                            className={cn(
-                              "rounded p-1 transition-colors",
-                              notesOpen.has(item.id)
-                                ? "bg-brand-500/10 text-brand-500"
-                                : "text-fg-faint hover:bg-hover hover:text-fg",
-                              item.justification &&
-                                "text-brand-500/70",
-                            )}
-                          >
-                            <MessageSquare className="h-3 w-3" />
-                          </button>
-                          {/* Edit parent */}
-                          <button
-                            onClick={() => setEditingItem(item)}
-                            title="Edit objective"
-                            className="rounded p-1 text-fg-faint hover:bg-hover hover:text-fg"
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </button>
-                          {/* Add sub-objective */}
-                          <button
-                            onClick={() =>
-                              setEditingSubItem({ item, sub: null })
-                            }
-                            title="Add sub-objective"
-                            className="rounded p-1 text-fg-faint hover:bg-hover hover:text-brand-500"
-                          >
-                            <Plus className="h-3 w-3" />
-                          </button>
-                          {/* Delete parent */}
-                          <button
-                            onClick={async () => {
-                              if (
-                                await confirm({
-                                  title: "Delete objective?",
-                                  message: `Remove "${item.objectives || `Item ${item.no}`}" and all its sub-objectives? Cannot be undone.`,
-                                  tone: "danger",
-                                  confirmLabel: "Delete",
-                                })
-                              ) {
-                                deleteItem(setId, item.id);
-                              }
-                            }}
-                            title="Delete objective"
-                            className="rounded p-1 text-fg-faint hover:bg-rose-500/10 hover:text-rose-500"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
+                        <RowActionMenu
+                          actions={[
+                            {
+                              label: notesOpen.has(item.id)
+                                ? "Hide notes"
+                                : item.justification
+                                  ? "Edit notes"
+                                  : "Add notes",
+                              icon: <MessageSquare className="h-3.5 w-3.5" />,
+                              active: notesOpen.has(item.id),
+                              onClick: () => toggleNotes(item.id),
+                            },
+                            {
+                              label: "Edit objective",
+                              icon: <Pencil className="h-3.5 w-3.5" />,
+                              onClick: () => setEditingItem(item),
+                            },
+                            {
+                              label: "Add sub-objective",
+                              icon: <Plus className="h-3.5 w-3.5" />,
+                              onClick: () => setEditingSubItem({ item, sub: null }),
+                            },
+                            {
+                              label: "Delete objective",
+                              icon: <Trash2 className="h-3.5 w-3.5" />,
+                              danger: true,
+                              onClick: async () => {
+                                if (
+                                  await confirm({
+                                    title: "Delete objective?",
+                                    message: `Remove "${item.objectives || `Item ${item.no}`}" and all its sub-objectives? Cannot be undone.`,
+                                    tone: "danger",
+                                    confirmLabel: "Delete",
+                                  })
+                                ) {
+                                  deleteItem(setId, item.id);
+                                }
+                              },
+                            },
+                          ]}
+                        />
                       </td>
                     )}
                   </tr>
@@ -544,48 +610,42 @@ export function KpiTable({ setId, items, readonly }: Props) {
                           </td>
                           {!readonly && (
                             <td className="px-2 py-2.5">
-                              <div className="flex items-center gap-1">
-                                <button
-                                  onClick={() => toggleNotes(sub.id)}
-                                  title="Notes"
-                                  className={cn(
-                                    "rounded p-1 transition-colors",
-                                    notesOpen.has(sub.id)
-                                      ? "bg-brand-500/10 text-brand-500"
-                                      : "text-fg-faint hover:bg-hover hover:text-fg",
-                                    sub.justification && "text-brand-500/70",
-                                  )}
-                                >
-                                  <MessageSquare className="h-3 w-3" />
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    setEditingSubItem({ item, sub })
-                                  }
-                                  title="Edit sub-objective"
-                                  className="rounded p-1 text-fg-faint hover:bg-hover hover:text-fg"
-                                >
-                                  <Pencil className="h-3 w-3" />
-                                </button>
-                                <button
-                                  onClick={async () => {
-                                    if (
-                                      await confirm({
-                                        title: "Delete sub-objective?",
-                                        message: `Remove "${sub.objectives || "this sub-objective"}"? Cannot be undone.`,
-                                        tone: "danger",
-                                        confirmLabel: "Delete",
-                                      })
-                                    ) {
-                                      deleteSubItem(setId, item.id, sub.id);
-                                    }
-                                  }}
-                                  title="Delete sub-objective"
-                                  className="rounded p-1 text-fg-faint hover:bg-rose-500/10 hover:text-rose-500"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </button>
-                              </div>
+                              <RowActionMenu
+                                actions={[
+                                  {
+                                    label: notesOpen.has(sub.id)
+                                      ? "Hide notes"
+                                      : sub.justification
+                                        ? "Edit notes"
+                                        : "Add notes",
+                                    icon: <MessageSquare className="h-3.5 w-3.5" />,
+                                    active: notesOpen.has(sub.id),
+                                    onClick: () => toggleNotes(sub.id),
+                                  },
+                                  {
+                                    label: "Edit sub-objective",
+                                    icon: <Pencil className="h-3.5 w-3.5" />,
+                                    onClick: () => setEditingSubItem({ item, sub }),
+                                  },
+                                  {
+                                    label: "Delete sub-objective",
+                                    icon: <Trash2 className="h-3.5 w-3.5" />,
+                                    danger: true,
+                                    onClick: async () => {
+                                      if (
+                                        await confirm({
+                                          title: "Delete sub-objective?",
+                                          message: `Remove "${sub.objectives || "this sub-objective"}"? Cannot be undone.`,
+                                          tone: "danger",
+                                          confirmLabel: "Delete",
+                                        })
+                                      ) {
+                                        deleteSubItem(setId, item.id, sub.id);
+                                      }
+                                    },
+                                  },
+                                ]}
+                              />
                             </td>
                           )}
                         </tr>
