@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Eye,
   LayoutGrid,
+  Mail,
   Plus,
   Search,
   Share2,
@@ -25,6 +26,7 @@ import { TimelineView } from "./TimelineView";
 import { TaskModal } from "./TaskModal";
 import { InviteMembersModal } from "./InviteMembersModal";
 import { ShareModal } from "./ShareModal";
+import { WeeklyReportModal } from "./WeeklyReportModal";
 import { Modal } from "./Modal";
 import { RealtimeSync } from "./RealtimeSync";
 import { SyncBanner } from "./SyncBanner";
@@ -61,6 +63,7 @@ export function BoardShell({
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [showInvite, setShowInvite] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [showAddGroup, setShowAddGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
@@ -250,6 +253,14 @@ export function BoardShell({
                     <Share2 className="h-3 w-3" />
                     {board.shareToken ? "Sharing" : "Share"}
                   </button>
+                  <button
+                    onClick={() => setShowReport(true)}
+                    className="inline-flex items-center gap-1 rounded border border-line bg-hover px-2 py-1 text-[11px] font-medium text-fg hover:bg-hover"
+                    title="Send weekly progress report by email"
+                  >
+                    <Mail className="h-3 w-3" />
+                    Weekly report
+                  </button>
                 </>
               )}
             </div>
@@ -371,6 +382,12 @@ export function BoardShell({
               board={board}
               open={showShare}
               onClose={() => setShowShare(false)}
+            />
+            <WeeklyReportModal
+              board={board}
+              open={showReport}
+              onClose={() => setShowReport(false)}
+              senderName={user?.name}
             />
             <Modal
               open={showAddGroup}
