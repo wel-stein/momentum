@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Plus, Trash2, Target, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useKpiStore } from "@/lib/kpi-store";
+import { kpiSetAchievedScore, kpiAssessedCount } from "@/lib/kpi-types";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { SyncBanner } from "@/components/SyncBanner";
 import { UserMenu } from "@/components/UserMenu";
@@ -106,8 +107,21 @@ export function KpiShell() {
                 (sum, i) => sum + i.weightage,
                 0,
               );
+              const achieved = kpiSetAchievedScore(kpiSet.items);
+              const achievedPct = totalWeight > 0 ? (achieved / totalWeight) * 100 : 0;
+              const { assessed, total } = kpiAssessedCount(kpiSet.items);
               const weightOk = totalWeight === 100;
               const weightOver = totalWeight > 100;
+              const barColor =
+                achievedPct >= 80
+                  ? "bg-emerald-500"
+                  : achievedPct >= 60
+                    ? "bg-brand-500"
+                    : achievedPct >= 40
+                      ? "bg-amber-500"
+                      : achievedPct > 0
+                        ? "bg-rose-500"
+                        : "bg-hover";
               return (
                 <div
                   key={kpiSet.id}
@@ -136,36 +150,45 @@ export function KpiShell() {
                       <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-fg-faint transition-transform group-hover:translate-x-0.5" />
                     </div>
 
-                    <div className="mt-3 flex items-center gap-3 text-[11px]">
-                      <span className="text-fg-subtle">
-                        {kpiSet.items.length} objective
-                        {kpiSet.items.length !== 1 ? "s" : ""}
-                      </span>
-                      <span
-                        className={cn(
-                          "rounded px-1.5 py-0.5 font-medium tabular-nums",
-                          weightOk
-                            ? "bg-emerald-500/10 text-emerald-600"
-                            : weightOver
-                              ? "bg-rose-500/10 text-rose-600"
-                              : "bg-amber-500/10 text-amber-600",
+                    {/* Achieved score */}
+                    <div className="mt-3 flex items-end justify-between gap-2">
+                      <div>
+                        <div className="text-[10px] text-fg-faint">Achieved score</div>
+                        <div className="tabular-nums text-[15px] font-semibold leading-tight text-fg">
+                          {achieved.toFixed(1)}
+                          <span className="text-[11px] font-normal text-fg-subtle">
+                            /{totalWeight.toFixed(0)}%
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px]">
+                        <span className="text-fg-subtle">
+                          {kpiSet.items.length} obj
+                        </span>
+                        {total > 0 && (
+                          <span className="text-fg-faint">
+                            · {assessed}/{total} assessed
+                          </span>
                         )}
-                      >
-                        {totalWeight}%
-                      </span>
+                        <span
+                          className={cn(
+                            "rounded px-1.5 py-0.5 font-medium tabular-nums",
+                            weightOk
+                              ? "bg-emerald-500/10 text-emerald-600"
+                              : weightOver
+                                ? "bg-rose-500/10 text-rose-600"
+                                : "bg-amber-500/10 text-amber-600",
+                          )}
+                        >
+                          {totalWeight}%
+                        </span>
+                      </div>
                     </div>
 
                     <div className="mt-2 h-[3px] overflow-hidden rounded-full bg-hover">
                       <div
-                        className={cn(
-                          "h-full rounded-full",
-                          weightOk
-                            ? "bg-emerald-500"
-                            : weightOver
-                              ? "bg-rose-500"
-                              : "bg-amber-500/70",
-                        )}
-                        style={{ width: `${Math.min(100, totalWeight)}%` }}
+                        className={cn("h-full rounded-full transition-all", barColor)}
+                        style={{ width: `${Math.min(100, achievedPct)}%` }}
                       />
                     </div>
                   </Link>
