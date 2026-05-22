@@ -178,7 +178,7 @@ export async function sendWeeklyReport(p: WeeklyReportEmail) {
 
   const text = [
     `${emoji} ${p.boardName} — Weekly Progress Update`,
-    `Prepared by ${sender} on ${formatDate(today)}`,
+    `Prepared by Momentum on ${formatDate(today)}`,
     "",
     "Task (project) that you & your team member completed this week",
     taskListText(p.thisWeek),
@@ -214,7 +214,7 @@ export async function sendWeeklyReport(p: WeeklyReportEmail) {
           <!-- Sender -->
           <tr><td style="padding:14px 24px 0 24px;">
             <p style="margin:0;font-size:12px;color:#71717a;">
-              Prepared by <strong style="color:#18181b;">${escape(sender)}</strong>
+              Prepared by <strong style="color:#18181b;">Momentum</strong>
             </p>
           </td></tr>
 
