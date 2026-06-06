@@ -111,7 +111,7 @@ export function Modal({
         aria-label={title}
         tabIndex={-1}
         className={cn(
-          "relative z-10 w-full overflow-hidden rounded-lg border border-line bg-elevated shadow-2xl shadow-black/60 focus:outline-none",
+          "relative z-10 flex max-h-[90vh] w-full flex-col overflow-hidden rounded-lg border border-line bg-elevated shadow-2xl shadow-black/60 focus:outline-none",
           SIZE[size],
         )}
       >
@@ -129,7 +129,7 @@ export function Modal({
             </button>
           </div>
         )}
-        <div className="px-5 py-4">{children}</div>
+        <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
         {footer && (
           <div className="flex items-center justify-end gap-2 border-t border-line bg-surface/60 px-5 py-3">
             {footer}
