@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Trash2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2, ArrowUp, ArrowDown, ArrowUpDown, GripVertical } from "lucide-react";
 import type { Board, Task } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { cn, formatDateSmart, isOverdue, taskCode } from "@/lib/utils";
@@ -28,12 +28,15 @@ export function TableView({ board, onOpenTask, filter }: Props) {
   const updateTask = useStore((s) => s.updateTask);
   const addTask = useStore((s) => s.addTask);
   const deleteTask = useStore((s) => s.deleteTask);
+  const moveTask = useStore((s) => s.moveTask);
   const toggleCollapsed = useStore((s) => s.toggleGroupCollapsed);
   const renameGroup = useStore((s) => s.renameGroup);
   const deleteGroup = useStore((s) => s.deleteGroup);
   const confirm = useConfirm();
 
   const [statusSort, setStatusSort] = useState<SortDir>(null);
+  const [dragging, setDragging] = useState<{ taskId: string; groupId: string } | null>(null);
+  const [overGroupId, setOverGroupId] = useState<string | null>(null);
 
   function cycleStatusSort() {
     setStatusSort((s) => (s === null ? "asc" : s === "asc" ? "desc" : null));
@@ -52,10 +55,32 @@ export function TableView({ board, onOpenTask, filter }: Props) {
               return statusSort === "asc" ? diff : -diff;
             })
           : filtered;
+
+        const isDropTarget = overGroupId === g.id && dragging?.groupId !== g.id;
+
         return (
           <section
             key={g.id}
-            className="overflow-hidden rounded-md border border-line"
+            onDragOver={(e) => {
+              if (!dragging || dragging.groupId === g.id) return;
+              e.preventDefault();
+              setOverGroupId(g.id);
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node))
+                setOverGroupId(null);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (dragging && dragging.groupId !== g.id)
+                moveTask(board.id, dragging.taskId, g.id);
+              setDragging(null);
+              setOverGroupId(null);
+            }}
+            className={cn(
+              "overflow-hidden rounded-md border transition-colors",
+              isDropTarget ? "border-brand-500/60 ring-1 ring-brand-500/30" : "border-line",
+            )}
           >
             <header className="flex items-center gap-1.5 border-b border-line bg-subtle px-2 py-1.5">
               <button
@@ -120,6 +145,7 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                 <table className="min-w-full text-[13px]">
                   <thead className="bg-subtle text-[10px] uppercase tracking-wider text-fg-subtle">
                     <tr className="border-b border-line">
+                      {!readOnly && <Th className="w-6" />}
                       <Th className="w-[64px] whitespace-nowrap">ID</Th>
                       <Th className="w-[44%] min-w-[320px]">Task</Th>
                       <Th className="w-[96px]">Owners</Th>
@@ -154,7 +180,7 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                         somewhere to type immediately. */}
                     {!readOnly && tasks.length === 0 && (
                       <tr>
-                        <td colSpan={9} className="px-2 py-1">
+                        <td colSpan={readOnly ? 9 : 10} className="px-2 py-1">
                           <AddRow
                             onAdd={(title) => addTask(board.id, g.id, title)}
                           />
@@ -164,7 +190,7 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                     {tasks.length === 0 && (
                       <tr>
                         <td
-                          colSpan={9}
+                          colSpan={readOnly ? 9 : 10}
                           className="px-4 py-4 text-center text-[11px] text-fg-subtle"
                         >
                           No tasks yet — start typing above.
@@ -180,13 +206,27 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                         onOpen={() => onOpenTask(t.id)}
                         onTitle={(v) => updateTask(board.id, t.id, { title: v })}
                         onDelete={() => deleteTask(board.id, t.id)}
+                        isDragging={dragging?.taskId === t.id}
+                        onDragStart={() => setDragging({ taskId: t.id, groupId: g.id })}
+                        onDragEnd={() => { setDragging(null); setOverGroupId(null); }}
                       />
                     ))}
+                    {/* Drop zone indicator */}
+                    {isDropTarget && (
+                      <tr>
+                        <td
+                          colSpan={readOnly ? 9 : 10}
+                          className="border-t-2 border-brand-500/50 bg-brand-500/5 py-2 text-center text-[11px] text-brand-500"
+                        >
+                          Drop here to move into &ldquo;{g.name}&rdquo;
+                        </td>
+                      </tr>
+                    )}
                     {/* Populated group: the append-row sits below existing
                         tasks, where new items naturally land. */}
                     {!readOnly && tasks.length > 0 && (
                       <tr>
-                        <td colSpan={9} className="px-2 py-1">
+                        <td colSpan={readOnly ? 9 : 10} className="px-2 py-1">
                           <AddRow
                             onAdd={(title) => addTask(board.id, g.id, title)}
                           />
@@ -230,6 +270,9 @@ function Row({
   onOpen,
   onTitle,
   onDelete,
+  isDragging,
+  onDragStart,
+  onDragEnd,
 }: {
   task: Task;
   board: Board;
@@ -237,6 +280,9 @@ function Row({
   onOpen: () => void;
   onTitle: (v: string) => void;
   onDelete: () => void;
+  isDragging: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
 }) {
   const updateTask = useStore((s) => s.updateTask);
   const overdue = isOverdue(task.dueDate);
@@ -248,7 +294,23 @@ function Row({
   }, [task.title]);
 
   return (
-    <tr className="group h-9 border-b border-line hover:bg-hover">
+    <tr
+      draggable={!readOnly}
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = "move";
+        onDragStart();
+      }}
+      onDragEnd={onDragEnd}
+      className={cn(
+        "group h-9 border-b border-line hover:bg-hover",
+        isDragging && "opacity-40",
+      )}
+    >
+      {!readOnly && (
+        <td className="px-1.5 text-fg-faint">
+          <GripVertical className="h-3.5 w-3.5 cursor-grab active:cursor-grabbing" />
+        </td>
+      )}
       <td className="whitespace-nowrap px-3">
         <button
           onClick={onOpen}
