@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import type { Board, Task } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { cn, formatDateSmart, isOverdue, taskCode } from "@/lib/utils";
@@ -11,6 +11,11 @@ import { AssigneePicker } from "./AssigneePicker";
 import { DatePicker } from "./DatePicker";
 import { useReadOnly } from "./BoardContext";
 import { useConfirm } from "./ConfirmDialog";
+import { STATUSES } from "@/lib/constants";
+
+type SortDir = "asc" | "desc" | null;
+
+const STATUS_ORDER = Object.fromEntries(STATUSES.map((s, i) => [s.key, i]));
 
 interface Props {
   board: Board;
@@ -28,12 +33,25 @@ export function TableView({ board, onOpenTask, filter }: Props) {
   const deleteGroup = useStore((s) => s.deleteGroup);
   const confirm = useConfirm();
 
+  const [statusSort, setStatusSort] = useState<SortDir>(null);
+
+  function cycleStatusSort() {
+    setStatusSort((s) => (s === null ? "asc" : s === "asc" ? "desc" : null));
+  }
+
   return (
     <div className="space-y-5 px-5 py-4">
       {board.groups.map((g) => {
-        const tasks = board.tasks.filter(
+        const filtered = board.tasks.filter(
           (t) => t.groupId === g.id && filter(t),
         );
+        const tasks = statusSort
+          ? [...filtered].sort((a, b) => {
+              const diff =
+                (STATUS_ORDER[a.status] ?? 0) - (STATUS_ORDER[b.status] ?? 0);
+              return statusSort === "asc" ? diff : -diff;
+            })
+          : filtered;
         return (
           <section
             key={g.id}
@@ -105,7 +123,25 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                       <Th className="w-[64px] whitespace-nowrap">ID</Th>
                       <Th className="w-[44%] min-w-[320px]">Task</Th>
                       <Th className="w-[96px]">Owners</Th>
-                      <Th className="w-[140px]">Status</Th>
+                      <th
+                        className={cn(
+                          "w-[140px] cursor-pointer select-none px-3 py-1.5 text-left font-medium transition-colors hover:text-fg",
+                          statusSort ? "text-brand-500" : "text-fg-subtle",
+                        )}
+                        onClick={cycleStatusSort}
+                        title="Sort by status"
+                      >
+                        <span className="flex items-center gap-1">
+                          Status
+                          {statusSort === "asc" ? (
+                            <ArrowUp className="h-3 w-3" />
+                          ) : statusSort === "desc" ? (
+                            <ArrowDown className="h-3 w-3" />
+                          ) : (
+                            <ArrowUpDown className="h-3 w-3 opacity-40" />
+                          )}
+                        </span>
+                      </th>
                       <Th className="w-[120px]">Priority</Th>
                       <Th className="w-[88px]">Start</Th>
                       <Th className="w-[88px]">Due</Th>
