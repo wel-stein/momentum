@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Trash2, ArrowUp, ArrowDown, ArrowUpDown, GripVertical } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2, ArrowUp, ArrowDown, ArrowUpDown, GripVertical, X } from "lucide-react";
 import type { Board, Task } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { cn, formatDateSmart, isOverdue, taskCode } from "@/lib/utils";
@@ -37,9 +37,51 @@ export function TableView({ board, onOpenTask, filter }: Props) {
   const [statusSort, setStatusSort] = useState<SortDir>(null);
   const [dragging, setDragging] = useState<{ taskId: string; groupId: string } | null>(null);
   const [overGroupId, setOverGroupId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   function cycleStatusSort() {
     setStatusSort((s) => (s === null ? "asc" : s === "asc" ? "desc" : null));
+  }
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectGroup(taskIds: string[]) {
+    setSelected((prev) => {
+      const allSelected = taskIds.length > 0 && taskIds.every((id) => prev.has(id));
+      const next = new Set(prev);
+      if (allSelected) taskIds.forEach((id) => next.delete(id));
+      else taskIds.forEach((id) => next.add(id));
+      return next;
+    });
+  }
+
+  function removeFromSelected(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }
+
+  async function deleteSelected() {
+    if (
+      await confirm({
+        title: `Delete ${selected.size} task${selected.size !== 1 ? "s" : ""}?`,
+        message: "This cannot be undone.",
+        tone: "danger",
+        confirmLabel: `Delete ${selected.size} task${selected.size !== 1 ? "s" : ""}`,
+      })
+    ) {
+      selected.forEach((id) => deleteTask(board.id, id));
+      setSelected(new Set());
+    }
   }
 
   return (
@@ -57,6 +99,11 @@ export function TableView({ board, onOpenTask, filter }: Props) {
           : filtered;
 
         const isDropTarget = overGroupId === g.id && dragging?.groupId !== g.id;
+        const groupTaskIds = tasks.map((t) => t.id);
+        const allGroupSelected =
+          groupTaskIds.length > 0 && groupTaskIds.every((id) => selected.has(id));
+        const someGroupSelected =
+          groupTaskIds.some((id) => selected.has(id)) && !allGroupSelected;
 
         return (
           <section
@@ -145,7 +192,21 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                 <table className="min-w-full text-[13px]">
                   <thead className="bg-subtle text-[10px] uppercase tracking-wider text-fg-subtle">
                     <tr className="border-b border-line">
-                      {!readOnly && <Th className="w-6" />}
+                      {!readOnly && (
+                        <th className="w-8 px-1.5 py-1.5">
+                          <input
+                            type="checkbox"
+                            checked={allGroupSelected}
+                            ref={(el) => {
+                              if (el) el.indeterminate = someGroupSelected;
+                            }}
+                            onChange={() => toggleSelectGroup(groupTaskIds)}
+                            disabled={groupTaskIds.length === 0}
+                            aria-label="Select all in group"
+                            className="accent-brand-500 cursor-pointer disabled:cursor-default"
+                          />
+                        </th>
+                      )}
                       <Th className="w-[64px] whitespace-nowrap">ID</Th>
                       <Th className="w-[44%] min-w-[320px]">Task</Th>
                       <Th className="w-[96px]">Owners</Th>
@@ -205,10 +266,15 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                         readOnly={readOnly}
                         onOpen={() => onOpenTask(t.id)}
                         onTitle={(v) => updateTask(board.id, t.id, { title: v })}
-                        onDelete={() => deleteTask(board.id, t.id)}
+                        onDelete={() => {
+                          deleteTask(board.id, t.id);
+                          removeFromSelected(t.id);
+                        }}
                         isDragging={dragging?.taskId === t.id}
                         onDragStart={() => setDragging({ taskId: t.id, groupId: g.id })}
                         onDragEnd={() => { setDragging(null); setOverGroupId(null); }}
+                        isSelected={selected.has(t.id)}
+                        onToggleSelect={() => toggleSelect(t.id)}
                       />
                     ))}
                     {/* Drop zone indicator */}
@@ -240,6 +306,31 @@ export function TableView({ board, onOpenTask, filter }: Props) {
           </section>
         );
       })}
+
+      {/* Bulk-delete floating bar */}
+      {!readOnly && selected.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2">
+          <div className="flex items-center gap-3 rounded-lg border border-line bg-elevated px-4 py-2.5 shadow-xl shadow-black/40">
+            <span className="text-[12px] text-fg-subtle">
+              {selected.size} task{selected.size !== 1 ? "s" : ""} selected
+            </span>
+            <button
+              onClick={deleteSelected}
+              className="inline-flex items-center gap-1.5 rounded bg-rose-500 px-3 py-1 text-[12px] font-medium text-white hover:bg-rose-600"
+            >
+              <Trash2 className="h-3 w-3" />
+              Delete
+            </button>
+            <button
+              onClick={() => setSelected(new Set())}
+              aria-label="Clear selection"
+              className="rounded p-0.5 text-fg-faint hover:text-fg"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -273,6 +364,8 @@ function Row({
   isDragging,
   onDragStart,
   onDragEnd,
+  isSelected,
+  onToggleSelect,
 }: {
   task: Task;
   board: Board;
@@ -283,6 +376,8 @@ function Row({
   isDragging: boolean;
   onDragStart: () => void;
   onDragEnd: () => void;
+  isSelected: boolean;
+  onToggleSelect: () => void;
 }) {
   const updateTask = useStore((s) => s.updateTask);
   const overdue = isOverdue(task.dueDate);
@@ -295,7 +390,7 @@ function Row({
 
   return (
     <tr
-      draggable={!readOnly}
+      draggable={!readOnly && !isSelected}
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = "move";
         onDragStart();
@@ -304,11 +399,32 @@ function Row({
       className={cn(
         "group h-9 border-b border-line hover:bg-hover",
         isDragging && "opacity-40",
+        isSelected && "bg-brand-500/5",
       )}
     >
       {!readOnly && (
-        <td className="px-1.5 text-fg-faint">
-          <GripVertical className="h-3.5 w-3.5 cursor-grab active:cursor-grabbing" />
+        <td className="w-8 px-1.5">
+          {/* Checkbox always visible when selected; on hover shows checkbox,
+              off hover shows grip handle */}
+          <div className="relative flex h-4 w-4 items-center justify-center">
+            <GripVertical
+              className={cn(
+                "h-3.5 w-3.5 cursor-grab text-fg-faint active:cursor-grabbing",
+                isSelected ? "invisible" : "group-hover:invisible",
+              )}
+            />
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={onToggleSelect}
+              onClick={(e) => e.stopPropagation()}
+              aria-label="Select task"
+              className={cn(
+                "absolute inset-0 h-4 w-4 cursor-pointer accent-brand-500",
+                !isSelected && "opacity-0 group-hover:opacity-100",
+              )}
+            />
+          </div>
         </td>
       )}
       <td className="whitespace-nowrap px-3">
