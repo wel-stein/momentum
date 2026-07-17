@@ -81,6 +81,11 @@ function memberName(board: Board, id: string): string {
   return board.members.find((m) => m.id === id)?.name ?? id;
 }
 
+function requesterName(board: Board, task: Task): string | null {
+  if (!task.requesterId) return null;
+  return board.contacts.find((c) => c.id === task.requesterId)?.name ?? null;
+}
+
 // ---------------------------------------------------------------------------
 // Recipient chip input
 // ---------------------------------------------------------------------------
@@ -162,7 +167,14 @@ function TaskList({ tasks, board, accent }: { tasks: Task[]; board: Board; accen
       {tasks.map((task, i) => (
         <li key={task.id} className="flex items-start gap-2 text-[12px]">
           <span className="mt-0.5 tabular-nums text-fg-faint">{i + 1}.</span>
-          <span className="flex-1 text-fg">{task.title}</span>
+          <span className="flex-1 text-fg">
+            {task.title}
+            {requesterName(board, task) && (
+              <span className="ml-1.5 inline-block rounded-full border border-line bg-hover px-1.5 py-px align-middle text-[10px] text-fg-subtle">
+                {requesterName(board, task)}
+              </span>
+            )}
+          </span>
           <span className="shrink-0 text-[11px] text-fg-subtle">
             {statusLabel(task.status)}
           </span>
@@ -202,6 +214,7 @@ export function WeeklyReportModal({ board, open, onClose, senderName }: Props) {
         title: t.title,
         status: statusLabel(t.status),
         assignees: t.assigneeIds.map((id) => memberName(board, id)),
+        requester: requesterName(board, t),
       }));
     }
 

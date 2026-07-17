@@ -111,6 +111,8 @@ export interface WeeklyReportTask {
   title: string;
   status: string;
   assignees: string[];
+  /** Requester contact name, shown as a badge after the task title. */
+  requester?: string | null;
 }
 
 export interface WeeklyReportEmail {
@@ -134,19 +136,28 @@ function formatDate(d: Date) {
 
 function taskListText(tasks: WeeklyReportTask[]): string {
   if (tasks.length === 0) return "  (no tasks)\n";
-  return tasks.map((t, i) => `  ${i + 1}) ${t.title} — ${t.status}`).join("\n") + "\n";
+  return tasks
+    .map(
+      (t, i) =>
+        `  ${i + 1}) ${t.title}${t.requester ? ` [${t.requester}]` : ""} — ${t.status}`,
+    )
+    .join("\n") + "\n";
 }
 
 function taskRowsHtml(tasks: WeeklyReportTask[]): string {
   if (tasks.length === 0) {
     return `<p style="margin:6px 0 0 0;font-size:12px;color:#a1a1aa;font-style:italic;">No tasks in this group.</p>`;
   }
+  const badge = (t: WeeklyReportTask) =>
+    t.requester
+      ? ` <span style="display:inline-block;margin-left:4px;padding:1px 7px;border-radius:999px;background:#f4f4f5;border:1px solid #e4e4e7;font-size:10px;color:#52525b;white-space:nowrap;">${escape(t.requester)}</span>`
+      : "";
   const rows = tasks
     .map(
       (t, i) => `
         <tr>
           <td style="padding:5px 8px 5px 0;font-size:12px;color:#71717a;vertical-align:top;white-space:nowrap;">${i + 1})</td>
-          <td style="padding:5px 0;font-size:13px;color:#18181b;vertical-align:top;">${escape(t.title)}</td>
+          <td style="padding:5px 0;font-size:13px;color:#18181b;vertical-align:top;">${escape(t.title)}${badge(t)}</td>
           <td style="padding:5px 0 5px 16px;font-size:11px;color:#71717a;vertical-align:top;white-space:nowrap;">${escape(t.status)}</td>
         </tr>`,
     )
