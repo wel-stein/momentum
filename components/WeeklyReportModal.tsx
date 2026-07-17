@@ -5,6 +5,7 @@ import { X, Mail, Send, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { Modal } from "./Modal";
 import type { Board, Task } from "@/lib/types";
 import { STATUSES } from "@/lib/types";
+import { getSupabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -218,10 +219,27 @@ export function WeeklyReportModal({ board, open, onClose, senderName }: Props) {
       }));
     }
 
+    // Attach the Supabase access token so the server route can gate
+    // sending to signed-in users (prevents anyone hitting the deployed
+    // URL from sending email through the configured account).
+    let token = "";
+    try {
+      const sb = getSupabase();
+      if (sb) {
+        const { data } = await sb.auth.getSession();
+        token = data.session?.access_token ?? "";
+      }
+    } catch {
+      // no session — the route will answer 401 with a clear message
+    }
+
     try {
       const res = await fetch("/api/weekly-report", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           recipients,
           boardName: board.name,
