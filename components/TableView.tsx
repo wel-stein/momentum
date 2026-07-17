@@ -8,9 +8,11 @@ import { cn, formatDateSmart, isOverdue, taskCode } from "@/lib/utils";
 import { StatusPill } from "./StatusPill";
 import { PriorityPill } from "./PriorityPill";
 import { AssigneePicker } from "./AssigneePicker";
+import { RequesterPicker } from "./RequesterPicker";
 import { DatePicker } from "./DatePicker";
 import { useReadOnly } from "./BoardContext";
 import { useConfirm } from "./ConfirmDialog";
+import { useRequesterNotify } from "./useRequesterNotify";
 import { STATUSES } from "@/lib/constants";
 
 type SortDir = "asc" | "desc" | null;
@@ -210,6 +212,7 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                       <Th className="w-[64px] whitespace-nowrap">ID</Th>
                       <Th className="w-[44%] min-w-[320px]">Task</Th>
                       <Th className="w-[96px]">Owners</Th>
+                      <Th className="w-[150px]">Requester</Th>
                       <th
                         className={cn(
                           "w-[140px] cursor-pointer select-none px-3 py-1.5 text-left font-medium transition-colors hover:text-fg",
@@ -241,7 +244,7 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                         somewhere to type immediately. */}
                     {!readOnly && tasks.length === 0 && (
                       <tr>
-                        <td colSpan={readOnly ? 9 : 10} className="px-2 py-1">
+                        <td colSpan={readOnly ? 10 : 11} className="px-2 py-1">
                           <AddRow
                             onAdd={(title) => addTask(board.id, g.id, title)}
                           />
@@ -251,7 +254,7 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                     {tasks.length === 0 && (
                       <tr>
                         <td
-                          colSpan={readOnly ? 9 : 10}
+                          colSpan={readOnly ? 10 : 11}
                           className="px-4 py-4 text-center text-[11px] text-fg-subtle"
                         >
                           No tasks yet — start typing above.
@@ -281,7 +284,7 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                     {isDropTarget && (
                       <tr>
                         <td
-                          colSpan={readOnly ? 9 : 10}
+                          colSpan={readOnly ? 10 : 11}
                           className="border-t-2 border-brand-500/50 bg-brand-500/5 py-2 text-center text-[11px] text-brand-500"
                         >
                           Drop here to move into &ldquo;{g.name}&rdquo;
@@ -292,7 +295,7 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                         tasks, where new items naturally land. */}
                     {!readOnly && tasks.length > 0 && (
                       <tr>
-                        <td colSpan={readOnly ? 9 : 10} className="px-2 py-1">
+                        <td colSpan={readOnly ? 10 : 11} className="px-2 py-1">
                           <AddRow
                             onAdd={(title) => addTask(board.id, g.id, title)}
                           />
@@ -380,6 +383,8 @@ function Row({
   onToggleSelect: () => void;
 }) {
   const updateTask = useStore((s) => s.updateTask);
+  const addContact = useStore((s) => s.addContact);
+  const notifyRequester = useRequesterNotify();
   const overdue = isOverdue(task.dueDate);
   const confirm = useConfirm();
   const [title, setTitle] = useState(task.title);
@@ -468,10 +473,24 @@ function Row({
         />
       </td>
       <td className="px-3">
+        <RequesterPicker
+          contacts={board.contacts}
+          value={task.requesterId}
+          disabled={readOnly}
+          onChange={(id) => updateTask(board.id, task.id, { requesterId: id })}
+          onCreate={(name, phone, email) =>
+            addContact(board.id, name, phone, email)
+          }
+        />
+      </td>
+      <td className="px-3">
         <StatusPill
           value={task.status}
           disabled={readOnly}
-          onChange={(v) => updateTask(board.id, task.id, { status: v })}
+          onChange={(v) => {
+            updateTask(board.id, task.id, { status: v });
+            notifyRequester(board, task, v);
+          }}
         />
       </td>
       <td className="px-3">

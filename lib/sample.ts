@@ -1,7 +1,7 @@
 import { nanoid } from "nanoid";
 import type { CurrentUser } from "./auth";
 import { GROUP_COLORS } from "./constants";
-import type { Board, Group, Member, Task } from "./types";
+import type { Board, Contact, Group, Member, Task } from "./types";
 import { pickAvatarColor } from "./utils";
 
 function nowIso() {
@@ -66,6 +66,21 @@ export function makeSampleBoard(
     role: "member",
   };
 
+  // Contact directory seeds: one requester with a WhatsApp-able phone,
+  // one without (exercises the "no notification prompt" path).
+  const jordan: Contact = {
+    id: nanoid(8),
+    name: "Jordan Lee",
+    phone: "+1 555 010 4477",
+    email: "jordan@client.example",
+  };
+  const priya: Contact = {
+    id: nanoid(8),
+    name: "Priya Patel",
+    phone: null,
+    email: "priya@client.example",
+  };
+
   const tasks: Task[] = [
     {
       id: nanoid(8),
@@ -86,6 +101,7 @@ export function makeSampleBoard(
       title: "Set up CI pipeline",
       status: "review",
       priority: "medium",
+      requesterId: jordan.id,
       assigneeIds: [me.id, sam.id],
       startDate: inDays(0),
       dueDate: inDays(3),
@@ -155,6 +171,7 @@ export function makeSampleBoard(
     groups: [groupA, groupB, groupC],
     tasks,
     members: [me, alex, sam],
+    contacts: [jordan, priya],
     createdAt: now,
     updatedAt: now,
   };

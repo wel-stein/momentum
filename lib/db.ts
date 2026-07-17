@@ -1,6 +1,6 @@
 "use client";
 
-import type { Board, Group, Member, Task } from "./types";
+import type { Board, Contact, Group, Member, Task } from "./types";
 import { getSupabase } from "./supabase";
 
 interface BoardRow {
@@ -39,12 +39,20 @@ interface TaskRow {
   description: string | null;
   status: string;
   priority: string;
+  requester_id: string | null;
   start_date: string | null;
   due_date: string | null;
   tags: string[] | null;
   created_at: string;
   updated_at: string;
   task_assignees?: { member_id: string }[];
+}
+interface ContactRow {
+  id: string;
+  board_id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
 }
 
 function logErr(label: string, err: unknown) {
@@ -62,8 +70,9 @@ export async function fetchAllBoards(): Promise<FetchResult<Board[]>> {
       `id, name, description, emoji, view, share_token, created_at, updated_at,
        board_groups (id, board_id, name, color, collapsed, position),
        board_members (id, board_id, name, email, avatar_color, avatar_url, auth_user_id, role),
+       contacts (id, board_id, name, phone, email),
        tasks (id, board_id, group_id, title, description, status, priority,
-              start_date, due_date, tags, created_at, updated_at,
+              requester_id, start_date, due_date, tags, created_at, updated_at,
               task_assignees (member_id))`,
     )
     .order("updated_at", { ascending: false });
@@ -77,6 +86,7 @@ export async function fetchAllBoards(): Promise<FetchResult<Board[]>> {
 function rowToBoard(b: BoardRow & {
   board_groups: GroupRow[];
   board_members: MemberRow[];
+  contacts: ContactRow[];
   tasks: TaskRow[];
 }): Board {
   const groups: Group[] = (b.board_groups ?? [])
@@ -97,6 +107,12 @@ function rowToBoard(b: BoardRow & {
     authUserId: m.auth_user_id ?? null,
     role: (m.role as Member["role"]) ?? "member",
   }));
+  const contacts: Contact[] = (b.contacts ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+    phone: c.phone ?? null,
+    email: c.email ?? null,
+  }));
   const tasks: Task[] = (b.tasks ?? []).map((t) => ({
     id: t.id,
     title: t.title,
@@ -104,6 +120,7 @@ function rowToBoard(b: BoardRow & {
     status: t.status as Task["status"],
     priority: t.priority as Task["priority"],
     assigneeIds: (t.task_assignees ?? []).map((a) => a.member_id),
+    requesterId: t.requester_id ?? null,
     startDate: t.start_date ?? undefined,
     dueDate: t.due_date ?? undefined,
     tags: t.tags ?? [],
@@ -120,6 +137,7 @@ function rowToBoard(b: BoardRow & {
     groups,
     tasks,
     members,
+    contacts,
     shareToken: b.share_token ?? null,
     createdAt: b.created_at,
     updatedAt: b.updated_at,
@@ -137,8 +155,9 @@ export async function fetchBoardByToken(
       `id, name, description, emoji, view, share_token, created_at, updated_at,
        board_groups (id, board_id, name, color, collapsed, position),
        board_members (id, board_id, name, email, avatar_color, avatar_url, auth_user_id, role),
+       contacts (id, board_id, name, phone, email),
        tasks (id, board_id, group_id, title, description, status, priority,
-              start_date, due_date, tags, created_at, updated_at,
+              requester_id, start_date, due_date, tags, created_at, updated_at,
               task_assignees (member_id))`,
     )
     .eq("share_token", token)
@@ -152,6 +171,7 @@ export async function fetchBoardByToken(
     data as BoardRow & {
       board_groups: GroupRow[];
       board_members: MemberRow[];
+      contacts: ContactRow[];
       tasks: TaskRow[];
     },
   );
@@ -224,6 +244,20 @@ export async function deleteMember(memberId: string) {
   logErr("deleteMember", error);
 }
 
+export async function upsertContact(boardId: string, contact: Contact) {
+  const sb = getSupabase();
+  if (!sb) return;
+  const { error } = await sb.from("contacts").upsert({
+    id: contact.id,
+    board_id: boardId,
+    name: contact.name,
+    phone: contact.phone ?? null,
+    email: contact.email ?? null,
+    updated_at: new Date().toISOString(),
+  });
+  logErr("upsertContact", error);
+}
+
 export async function upsertTask(boardId: string, task: Task) {
   const sb = getSupabase();
   if (!sb) return;
@@ -235,6 +269,7 @@ export async function upsertTask(boardId: string, task: Task) {
     description: task.description ?? null,
     status: task.status,
     priority: task.priority,
+    requester_id: task.requesterId ?? null,
     start_date: task.startDate ?? null,
     due_date: task.dueDate ?? null,
     tags: task.tags,
@@ -277,6 +312,8 @@ export async function seedSampleBoard(board: Board) {
   await Promise.all(
     board.groups.map((g, i) => upsertGroup(board.id, g, i)),
   );
+  // Contacts must exist before tasks so requester_id FKs resolve.
+  await Promise.all(board.contacts.map((c) => upsertContact(board.id, c)));
   for (const t of board.tasks) {
     await upsertTask(board.id, t);
     if (t.assigneeIds.length > 0) await setTaskAssignees(t.id, t.assigneeIds);

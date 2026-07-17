@@ -5,6 +5,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { nanoid } from "nanoid";
 import type {
   Board,
+  Contact,
   Group,
   Member,
   Priority,
@@ -24,6 +25,7 @@ import {
   seedSampleBoard,
   setTaskAssignees,
   upsertBoard,
+  upsertContact,
   upsertGroup,
   upsertMember,
   upsertTask,
@@ -69,6 +71,17 @@ interface Actions {
   ) => void;
   deleteTask: (boardId: string, taskId: string) => void;
 
+  /**
+   * Add a person to the board's contact directory (e.g. a requester created
+   * on the fly from the Requester picker). Returns the new contact's id.
+   */
+  addContact: (
+    boardId: string,
+    name: string,
+    phone?: string,
+    email?: string,
+  ) => string | null;
+
   inviteMember: (boardId: string, name: string, email: string) => void;
   removeMember: (boardId: string, memberId: string) => void;
   updateMemberRole: (
@@ -94,6 +107,7 @@ export interface RemoteChange {
     | "boards"
     | "board_groups"
     | "board_members"
+    | "contacts"
     | "tasks"
     | "task_assignees";
   new: Record<string, unknown> | null;
@@ -280,6 +294,7 @@ export const useStore = create<State & Actions>()(
           groups,
           tasks: [],
           members: [me],
+          contacts: [],
           createdAt: now,
           updatedAt: now,
         };
@@ -477,7 +492,20 @@ export const useStore = create<State & Actions>()(
         }));
         if (!touched) return;
         const next = touched;
-        fnf(upsertTask(boardId, next));
+        // If this patch assigns a requester, sync the contact row first so
+        // the tasks.requester_id FK can't race a just-created contact
+        // (contact + assignment fire back-to-back from the picker).
+        const requester = patch.requesterId
+          ? get()
+              .boards.find((b) => b.id === boardId)
+              ?.contacts.find((c) => c.id === patch.requesterId)
+          : undefined;
+        fnf(
+          (async () => {
+            if (requester) await upsertContact(boardId, requester);
+            await upsertTask(boardId, next);
+          })(),
+        );
         // task_assignees is a separate table; only touch it when the patch
         // actually changed the assignee list, otherwise we re-DELETE+INSERT
         // on every title / status / date edit.
@@ -523,6 +551,32 @@ export const useStore = create<State & Actions>()(
           ),
         }));
         fnf(dbDeleteTask(taskId));
+      },
+
+      addContact: (boardId, name, phone, email) => {
+        const board = get().boards.find((b) => b.id === boardId);
+        if (!board) return null;
+        const trimmedName = name.trim();
+        if (!trimmedName) return null;
+        const contact: Contact = {
+          id: nanoid(8),
+          name: trimmedName,
+          phone: phone?.trim() || null,
+          email: email?.trim() || null,
+        };
+        set((s) => ({
+          boards: s.boards.map((b) =>
+            b.id !== boardId
+              ? b
+              : {
+                  ...b,
+                  contacts: [...b.contacts, contact],
+                  updatedAt: nowIso(),
+                },
+          ),
+        }));
+        fnf(upsertContact(boardId, contact));
+        return contact.id;
       },
 
       inviteMember: (boardId, name, email) => {
@@ -670,6 +724,8 @@ function applyRemoteChangeReducer(
       return mergeGroupRow(boards, c);
     case "board_members":
       return mergeMemberRow(boards, c);
+    case "contacts":
+      return mergeContactRow(boards, c);
     case "tasks":
       return mergeTaskRow(boards, c);
     case "task_assignees":
@@ -778,6 +834,37 @@ function mergeMemberRow(boards: Board[], c: RemoteChange) {
   return { boards: next };
 }
 
+function mergeContactRow(boards: Board[], c: RemoteChange) {
+  const boardId = (c.new?.board_id ?? c.old?.board_id) as string | undefined;
+  const idx = findBoardIdx(boards, boardId);
+  if (idx < 0) return NO_CHANGE;
+  const board = { ...boards[idx], contacts: boards[idx].contacts.slice() };
+  if (c.eventType === "DELETE") {
+    const cid = c.old?.id as string | undefined;
+    if (!cid) return NO_CHANGE;
+    board.contacts = board.contacts.filter((x) => x.id !== cid);
+    board.tasks = board.tasks.map((t) =>
+      t.requesterId === cid ? { ...t, requesterId: null } : t,
+    );
+  } else if (c.new) {
+    const r = c.new;
+    const contact: Contact = {
+      id: r.id as string,
+      name: r.name as string,
+      phone: (r.phone as string | null) ?? null,
+      email: (r.email as string | null) ?? null,
+    };
+    const ci = board.contacts.findIndex((x) => x.id === contact.id);
+    if (ci >= 0) board.contacts[ci] = contact;
+    else board.contacts.push(contact);
+  } else {
+    return NO_CHANGE;
+  }
+  const next = boards.slice();
+  next[idx] = board;
+  return { boards: next };
+}
+
 function mergeTaskRow(boards: Board[], c: RemoteChange) {
   const boardId = (c.new?.board_id ?? c.old?.board_id) as string | undefined;
   const idx = findBoardIdx(boards, boardId);
@@ -807,6 +894,7 @@ function mergeTaskRow(boards: Board[], c: RemoteChange) {
       // task_assignees has its own subscription; preserve current value.
       assigneeIds:
         existingIdx >= 0 ? board.tasks[existingIdx].assigneeIds : [],
+      requesterId: (r.requester_id as string | null) ?? null,
       startDate: (r.start_date as string | null) ?? undefined,
       dueDate: (r.due_date as string | null) ?? undefined,
       tags: (r.tags as string[] | null) ?? [],

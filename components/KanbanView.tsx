@@ -20,6 +20,7 @@ import { cn, formatDateSmart, isOverdue, taskCode } from "@/lib/utils";
 import { AvatarStack } from "./Avatar";
 import { PriorityIndicator } from "./PriorityPill";
 import { useReadOnly } from "./BoardContext";
+import { useRequesterNotify } from "./useRequesterNotify";
 
 interface Props {
   board: Board;
@@ -39,6 +40,7 @@ export function KanbanView({ board, onOpenTask, filter }: Props) {
   const readOnly = useReadOnly();
   const moveTask = useStore((s) => s.moveTask);
   const addTask = useStore((s) => s.addTask);
+  const notifyRequester = useRequesterNotify();
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -58,6 +60,7 @@ export function KanbanView({ board, onOpenTask, filter }: Props) {
     if (!task) return;
     if (task.groupId === groupId && task.status === status) return;
     moveTask(board.id, taskId, groupId, status as Task["status"]);
+    notifyRequester(board, task, status as Task["status"]);
   };
 
   const activeTask = activeId
