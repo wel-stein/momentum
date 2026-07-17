@@ -7,7 +7,6 @@ import { ArrowLeft, Crown, LogOut, Mail } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { signOut } from "@/lib/auth";
 import { Avatar, AvatarStack } from "./Avatar";
-import { OpenClawSettings } from "./OpenClawSettings";
 import { SyncBanner } from "./SyncBanner";
 import { UserMenu } from "./UserMenu";
 import { useAuth, useUser } from "./AuthProvider";
@@ -163,8 +162,6 @@ export function ProfileShell() {
             </div>
           </section>
         )}
-
-        <OpenClawSettings />
 
         <section className="mt-4 rounded-md border border-rose-500/15 bg-rose-500/[0.03] p-5">
           <h2 className="text-[10px] font-medium uppercase tracking-wider text-rose-300">
