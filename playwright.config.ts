@@ -22,6 +22,15 @@ export default defineConfig({
     trace: "on-first-retry",
     actionTimeout: 10_000,
     navigationTimeout: 20_000,
+    // Sandboxed/CI containers often pre-install a single Chromium build
+    // that doesn't match this Playwright version's expected revision.
+    ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
+      ? {
+          launchOptions: {
+            executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE,
+          },
+        }
+      : {}),
   },
   projects: [
     {

@@ -13,7 +13,7 @@ import { useStore, type RemoteChange } from "@/lib/store";
  * lives behind the Database Replication feature, which is billable on
  * paid plans. When the flag is unset / "false", this component returns
  * null and opens no channel, so it's free to keep mounted. Flip the env
- * var (and enable replication on the five tables in the Supabase
+ * var (and enable replication on the six tables in the Supabase
  * dashboard) to turn live updates on.
  */
 export function RealtimeSync({ boardId }: { boardId: string }) {
@@ -78,6 +78,17 @@ export function RealtimeSync({ boardId }: { boardId: string }) {
           filter: `board_id=eq.${boardId}`,
         },
         forward("board_members"),
+      )
+      .on(
+        //
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "contacts",
+          filter: `board_id=eq.${boardId}`,
+        },
+        forward("contacts"),
       )
       .on(
         //

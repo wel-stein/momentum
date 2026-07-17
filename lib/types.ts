@@ -28,6 +28,17 @@ export interface Member {
   role: "owner" | "admin" | "member" | "viewer";
 }
 
+/**
+ * A person in the board's contact directory. Unlike a Member, a contact
+ * never signs in — it's an external requester reachable by phone/email.
+ */
+export interface Contact {
+  id: string;
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -35,6 +46,7 @@ export interface Task {
   status: StatusKey;
   priority: Priority;
   assigneeIds: string[];
+  requesterId?: string | null;
   startDate?: string; // ISO
   dueDate?: string; // ISO
   tags: string[];
@@ -59,6 +71,7 @@ export interface Board {
   groups: Group[];
   tasks: Task[];
   members: Member[];
+  contacts: Contact[];
   shareToken?: string | null;
   createdAt: string;
   updatedAt: string;
