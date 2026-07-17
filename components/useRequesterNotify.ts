@@ -2,13 +2,25 @@
 
 import { useCallback } from "react";
 import type { Board, StatusKey, Task } from "@/lib/types";
-import { buildWhatsAppUrl, completionMessage } from "@/lib/whatsapp";
+import {
+  buildWhatsAppUrl,
+  completionMessage,
+  normalizePhone,
+} from "@/lib/whatsapp";
+import {
+  isOpenClawReady,
+  loadOpenClawConfig,
+  sendWhatsAppViaOpenClaw,
+} from "@/lib/openclaw";
 import { useConfirm } from "./ConfirmDialog";
 
 /**
  * Returns a callback to invoke right after a task's status changes.
  * When the change is a transition into "done" and the task's requester
- * has a valid phone number, it offers to notify them via WhatsApp.
+ * has a valid phone number, it offers to notify them via WhatsApp —
+ * through a locally configured OpenClaw gateway (sends directly from the
+ * user's own number) when available, otherwise by opening a prefilled
+ * api.whatsapp.com compose tab.
  *
  * Fire-and-forget by design: the status update has already been applied
  * by the time the dialog shows, so declining (or ignoring) the prompt
@@ -24,18 +36,38 @@ export function useRequesterNotify() {
       if (!task.requesterId) return;
       const contact = board.contacts.find((c) => c.id === task.requesterId);
       if (!contact) return;
-      const url = buildWhatsAppUrl(
-        contact.phone,
-        completionMessage(contact.name, task.title),
-      );
-      if (!url) return;
+      const digits = normalizePhone(contact.phone);
+      if (!digits) return;
+      const message = completionMessage(contact.name, task.title);
+      const composeUrl = buildWhatsAppUrl(contact.phone, message);
+      if (!composeUrl) return;
+      const openClaw = loadOpenClawConfig();
+      const viaOpenClaw = isOpenClawReady(openClaw);
+
       void confirm({
         title: "Task completed",
-        message: `Would you like to notify the requester that this task has been completed? This opens WhatsApp with a message to ${contact.name}.`,
+        message: viaOpenClaw
+          ? `Would you like to notify the requester that this task has been completed? OpenClaw will send the WhatsApp message to ${contact.name} from your number.`
+          : `Would you like to notify the requester that this task has been completed? This opens WhatsApp with a message to ${contact.name}.`,
         confirmLabel: "Yes",
         cancelLabel: "No",
-      }).then((yes) => {
-        if (yes) window.open(url, "_blank", "noopener,noreferrer");
+      }).then(async (yes) => {
+        if (!yes) return;
+        if (!viaOpenClaw) {
+          window.open(composeUrl, "_blank", "noopener,noreferrer");
+          return;
+        }
+        const result = await sendWhatsAppViaOpenClaw(openClaw, digits, message);
+        if (result.ok) return;
+        // The gateway is down/unreachable — offer the manual compose tab
+        // so the notification can still go out.
+        const fallback = await confirm({
+          title: "OpenClaw couldn't send the message",
+          message: `${result.error ?? "The gateway didn't respond."} Open WhatsApp to send it manually instead?`,
+          confirmLabel: "Open WhatsApp",
+          cancelLabel: "Dismiss",
+        });
+        if (fallback) window.open(composeUrl, "_blank", "noopener,noreferrer");
       });
     },
     [confirm],
