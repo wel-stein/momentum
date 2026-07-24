@@ -4,6 +4,7 @@ export const STATUSES: Status[] = [
   { key: "not_started", label: "Not started", color: "#c4c4c4" },
   { key: "in_progress", label: "Working on it", color: "#fdab3d" },
   { key: "stuck", label: "Stuck", color: "#e2445c" },
+  { key: "kiv", label: "KIV", color: "#579bfc" },
   { key: "review", label: "In review", color: "#a25ddc" },
   { key: "done", label: "Done", color: "#00c875" },
 ];

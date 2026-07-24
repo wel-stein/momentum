@@ -20,6 +20,7 @@ const STATUS_BG: Record<string, string> = {
   not_started: "bg-zinc-600",
   in_progress: "bg-amber-500/80",
   stuck: "bg-rose-500/80",
+  kiv: "bg-sky-500/80",
   review: "bg-violet-500/80",
   done: "bg-emerald-500/80",
 };

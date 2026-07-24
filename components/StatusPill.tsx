@@ -18,6 +18,7 @@ const DOT: Record<StatusKey, string> = {
   not_started: "bg-zinc-500",
   in_progress: "bg-amber-400",
   stuck: "bg-rose-500",
+  kiv: "bg-sky-400",
   review: "bg-violet-400",
   done: "bg-emerald-500",
 };

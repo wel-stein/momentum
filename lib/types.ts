@@ -9,6 +9,7 @@ export type StatusKey =
   | "not_started"
   | "in_progress"
   | "stuck"
+  | "kiv"
   | "done"
   | "review";
 
