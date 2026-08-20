@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowLeft, Check, Plus, UserRound } from "lucide-react";
 import type { Contact } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { Popover } from "./Popover";
 
 interface Props {
   contacts: Contact[];
@@ -38,14 +39,6 @@ export function RequesterPicker({
   const [emailDraft, setEmailDraft] = useState("");
   const ref = useRef<HTMLDivElement>(null);
   const chosen = contacts.find((c) => c.id === value) ?? null;
-
-  useEffect(() => {
-    const onDown = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) close();
-    };
-    if (open) document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
 
   function close() {
     setOpen(false);
@@ -89,6 +82,8 @@ export function RequesterPicker({
       <button
         type="button"
         disabled={disabled}
+        aria-haspopup="menu"
+        aria-expanded={open}
         onClick={(e) => {
           if (disabled) return;
           e.stopPropagation();
@@ -115,141 +110,144 @@ export function RequesterPicker({
           </span>
         )}
       </button>
-      {open && (
-        <div className="absolute left-0 top-full z-40 mt-1 w-64 overflow-hidden rounded-md border border-line bg-elevated shadow-xl shadow-black/40">
-          {!creating ? (
-            <>
-              <div className="border-b border-line p-1.5">
-                <input
-                  autoFocus
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
-                  placeholder="Search contacts…"
-                  className="w-full rounded border border-line bg-surface px-2 py-1 text-[12px] text-fg placeholder:text-fg-faint focus:border-brand-500/40 focus:outline-none"
-                />
-              </div>
-              <div className="max-h-56 overflow-y-auto py-1">
-                {chosen && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      select(null);
-                    }}
-                    className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs text-fg-subtle hover:bg-hover"
-                  >
-                    <span className="grid h-5 w-5 place-items-center">—</span>
-                    No requester
-                  </button>
-                )}
-                {filtered.length === 0 && (
-                  <div className="px-3 py-2 text-[11px] text-fg-subtle">
-                    {contacts.length === 0
-                      ? "No contacts yet — create one below."
-                      : "No matching contacts."}
-                  </div>
-                )}
-                {filtered.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      select(c.id);
-                    }}
-                    className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs text-fg hover:bg-hover"
-                  >
-                    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-hover">
-                      <UserRound className="h-3 w-3 text-fg-subtle" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate">{c.name}</span>
-                      {(c.phone || c.email) && (
-                        <span className="block truncate font-mono text-[10px] text-fg-subtle">
-                          {c.phone || c.email}
-                        </span>
-                      )}
-                    </span>
-                    {c.id === value && (
-                      <Check className="h-3.5 w-3.5 shrink-0 text-brand-400" />
-                    )}
-                  </button>
-                ))}
-              </div>
-              <div className="border-t border-line p-1">
+      <Popover
+        open={open}
+        onClose={close}
+        anchorRef={ref}
+        className="w-64 rounded-md border border-line bg-elevated shadow-xl shadow-black/40"
+      >
+        {!creating ? (
+          <>
+            <div className="border-b border-line p-1.5">
+              <input
+                autoFocus
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                placeholder="Search contacts…"
+                className="w-full rounded border border-line bg-surface px-2 py-1 text-[12px] text-fg placeholder:text-fg-faint focus:border-brand-500/40 focus:outline-none"
+              />
+            </div>
+            <div className="max-h-56 overflow-y-auto py-1">
+              {chosen && (
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    startCreate();
+                    select(null);
                   }}
-                  className="flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left text-[11px] font-medium text-brand-400 hover:bg-hover"
+                  className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs text-fg-subtle hover:bg-hover"
                 >
-                  <Plus className="h-3 w-3" />
-                  {q ? `New requester “${query.trim()}”` : "New requester"}
+                  <span className="grid h-5 w-5 place-items-center">—</span>
+                  No requester
                 </button>
-              </div>
-            </>
-          ) : (
-            <div
-              className="space-y-1.5 p-2"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center gap-1 pb-0.5 text-[10px] font-medium uppercase tracking-wider text-fg-subtle">
+              )}
+              {filtered.length === 0 && (
+                <div className="px-3 py-2 text-[11px] text-fg-subtle">
+                  {contacts.length === 0
+                    ? "No contacts yet — create one below."
+                    : "No matching contacts."}
+                </div>
+              )}
+              {filtered.map((c) => (
                 <button
+                  key={c.id}
                   type="button"
-                  onClick={() => setCreating(false)}
-                  aria-label="Back to contact list"
-                  className="rounded p-0.5 hover:bg-hover hover:text-fg"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    select(c.id);
+                  }}
+                  className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs text-fg hover:bg-hover"
                 >
-                  <ArrowLeft className="h-3 w-3" />
+                  <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-hover">
+                    <UserRound className="h-3 w-3 text-fg-subtle" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate">{c.name}</span>
+                    {(c.phone || c.email) && (
+                      <span className="block truncate font-mono text-[10px] text-fg-subtle">
+                        {c.phone || c.email}
+                      </span>
+                    )}
+                  </span>
+                  {c.id === value && (
+                    <Check className="h-3.5 w-3.5 shrink-0 text-brand-400" />
+                  )}
                 </button>
-                New requester
-              </div>
-              <input
-                autoFocus
-                value={nameDraft}
-                onChange={(e) => setNameDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") submitCreate();
-                }}
-                placeholder="Name"
-                className="w-full rounded border border-line bg-surface px-2 py-1 text-[12px] text-fg placeholder:text-fg-faint focus:border-brand-500/40 focus:outline-none"
-              />
-              <input
-                value={phoneDraft}
-                onChange={(e) => setPhoneDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") submitCreate();
-                }}
-                placeholder="Phone (intl. format, e.g. +1 555 010 4477)"
-                className="w-full rounded border border-line bg-surface px-2 py-1 text-[12px] text-fg placeholder:text-fg-faint focus:border-brand-500/40 focus:outline-none"
-              />
-              <input
-                value={emailDraft}
-                onChange={(e) => setEmailDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") submitCreate();
-                }}
-                placeholder="Email (optional)"
-                className="w-full rounded border border-line bg-surface px-2 py-1 text-[12px] text-fg placeholder:text-fg-faint focus:border-brand-500/40 focus:outline-none"
-              />
-              <p className="text-[10px] leading-snug text-fg-faint">
-                A phone number enables the WhatsApp completion notification.
-              </p>
+              ))}
+            </div>
+            <div className="border-t border-line p-1">
               <button
                 type="button"
-                onClick={submitCreate}
-                disabled={!nameDraft.trim()}
-                className="w-full rounded bg-brand-500 px-2 py-1 text-[11px] font-medium text-white hover:bg-brand-400 disabled:opacity-40"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  startCreate();
+                }}
+                className="flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left text-[11px] font-medium text-brand-400 hover:bg-hover"
               >
-                Create &amp; select
+                <Plus className="h-3 w-3" />
+                {q ? `New requester “${query.trim()}”` : "New requester"}
               </button>
             </div>
-          )}
-        </div>
-      )}
+          </>
+        ) : (
+          <div
+            className="space-y-1.5 p-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-1 pb-0.5 text-[10px] font-medium uppercase tracking-wider text-fg-subtle">
+              <button
+                type="button"
+                onClick={() => setCreating(false)}
+                aria-label="Back to contact list"
+                className="rounded p-0.5 hover:bg-hover hover:text-fg"
+              >
+                <ArrowLeft className="h-3 w-3" />
+              </button>
+              New requester
+            </div>
+            <input
+              autoFocus
+              value={nameDraft}
+              onChange={(e) => setNameDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") submitCreate();
+              }}
+              placeholder="Name"
+              className="w-full rounded border border-line bg-surface px-2 py-1 text-[12px] text-fg placeholder:text-fg-faint focus:border-brand-500/40 focus:outline-none"
+            />
+            <input
+              value={phoneDraft}
+              onChange={(e) => setPhoneDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") submitCreate();
+              }}
+              placeholder="Phone (intl. format, e.g. +1 555 010 4477)"
+              className="w-full rounded border border-line bg-surface px-2 py-1 text-[12px] text-fg placeholder:text-fg-faint focus:border-brand-500/40 focus:outline-none"
+            />
+            <input
+              value={emailDraft}
+              onChange={(e) => setEmailDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") submitCreate();
+              }}
+              placeholder="Email (optional)"
+              className="w-full rounded border border-line bg-surface px-2 py-1 text-[12px] text-fg placeholder:text-fg-faint focus:border-brand-500/40 focus:outline-none"
+            />
+            <p className="text-[10px] leading-snug text-fg-faint">
+              A phone number enables the WhatsApp completion notification.
+            </p>
+            <button
+              type="button"
+              onClick={submitCreate}
+              disabled={!nameDraft.trim()}
+              className="w-full rounded bg-brand-500 px-2 py-1 text-[11px] font-medium text-white hover:bg-brand-400 disabled:opacity-40"
+            >
+              Create &amp; select
+            </button>
+          </div>
+        )}
+      </Popover>
     </div>
   );
 }

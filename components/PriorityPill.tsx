@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { AlertTriangle, Check } from "lucide-react";
 import { PRIORITY_META, Priority } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { Popover } from "./Popover";
 
 interface Props {
   value: Priority;
@@ -76,19 +77,13 @@ export function PriorityPill({ value, onChange, size = "sm", disabled }: Props) 
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const onDown = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    };
-    if (open) document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
-
   return (
     <div ref={ref} className="relative inline-block">
       <button
         type="button"
         disabled={disabled}
+        aria-haspopup="menu"
+        aria-expanded={open}
         onClick={(e) => {
           if (disabled) return;
           e.stopPropagation();
@@ -103,26 +98,29 @@ export function PriorityPill({ value, onChange, size = "sm", disabled }: Props) 
         <PriorityGlyph value={value} />
         <span>{PRIORITY_META[value].label}</span>
       </button>
-      {open && (
-        <div className="absolute left-0 top-full z-30 mt-1 w-36 overflow-hidden rounded-md border border-line bg-elevated shadow-xl shadow-black/40">
-          {ORDER.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onChange(p);
-                setOpen(false);
-              }}
-              className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs text-fg hover:bg-hover"
-            >
-              <PriorityGlyph value={p} />
-              <span className="flex-1">{PRIORITY_META[p].label}</span>
-              {p === value && <Check className="h-3 w-3 text-fg-muted" />}
-            </button>
-          ))}
-        </div>
-      )}
+      <Popover
+        open={open}
+        onClose={() => setOpen(false)}
+        anchorRef={ref}
+        className="w-36 rounded-md border border-line bg-elevated shadow-xl shadow-black/40"
+      >
+        {ORDER.map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange(p);
+              setOpen(false);
+            }}
+            className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs text-fg hover:bg-hover"
+          >
+            <PriorityGlyph value={p} />
+            <span className="flex-1">{PRIORITY_META[p].label}</span>
+            {p === value && <Check className="h-3 w-3 text-fg-muted" />}
+          </button>
+        ))}
+      </Popover>
     </div>
   );
 }

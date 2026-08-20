@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState, useRef, useEffect } from "react";
+import { Fragment, useState, useRef } from "react";
 import {
   Trash2,
   Plus,
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useKpiStore } from "@/lib/kpi-store";
 import { useConfirm } from "@/components/ConfirmDialog";
+import { Popover } from "@/components/Popover";
 import { KpiItemModal } from "./KpiItemModal";
 import { KpiSubItemModal } from "./KpiSubItemModal";
 import type { KpiItem, KpiSubItem } from "@/lib/kpi-types";
@@ -215,27 +216,11 @@ function RowActionMenu({ actions }: { actions: ActionItem[] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    function onDown(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
   return (
     <div ref={ref} className="relative flex justify-center">
       <button
+        aria-haspopup="menu"
+        aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         className={cn(
           "rounded p-1.5 transition-colors",
@@ -248,31 +233,34 @@ function RowActionMenu({ actions }: { actions: ActionItem[] }) {
         <MoreVertical className="h-4 w-4" />
       </button>
 
-      {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 min-w-[172px] overflow-hidden rounded-md border border-line bg-surface shadow-lg">
-          {actions.map((a) => (
-            <button
-              key={a.label}
-              onClick={() => {
-                a.onClick();
-                if (!a.active !== undefined) setOpen(false);
-                else setOpen(false);
-              }}
-              className={cn(
-                "flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-[12px] transition-colors",
-                a.danger
-                  ? "text-rose-500 hover:bg-rose-500/8"
-                  : a.active
-                    ? "bg-brand-500/8 text-brand-500 hover:bg-brand-500/12"
-                    : "text-fg hover:bg-hover",
-              )}
-            >
-              <span className="shrink-0">{a.icon}</span>
-              {a.label}
-            </button>
-          ))}
-        </div>
-      )}
+      <Popover
+        open={open}
+        onClose={() => setOpen(false)}
+        anchorRef={ref}
+        align="end"
+        className="min-w-[172px] rounded-md border border-line bg-surface shadow-lg"
+      >
+        {actions.map((a) => (
+          <button
+            key={a.label}
+            onClick={() => {
+              a.onClick();
+              setOpen(false);
+            }}
+            className={cn(
+              "flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-[12px] transition-colors",
+              a.danger
+                ? "text-rose-500 hover:bg-rose-500/8"
+                : a.active
+                  ? "bg-brand-500/8 text-brand-500 hover:bg-brand-500/12"
+                  : "text-fg hover:bg-hover",
+            )}
+          >
+            <span className="shrink-0">{a.icon}</span>
+            {a.label}
+          </button>
+        ))}
+      </Popover>
     </div>
   );
 }

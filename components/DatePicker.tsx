@@ -8,6 +8,7 @@ import {
   isoToLocalDateInput,
   localDateInputToIso,
 } from "@/lib/utils";
+import { Popover } from "./Popover";
 
 interface Props {
   /** ISO date string. */
@@ -69,23 +70,6 @@ export function DatePicker({
     if (open) setCursor(startOfMonth(valueDate ?? new Date()));
   }, [open, valueDate]);
 
-  useEffect(() => {
-    const onDown = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    if (open) {
-      document.addEventListener("mousedown", onDown);
-      document.addEventListener("keydown", onKey);
-    }
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
   const today = useMemo(() => {
     const t = new Date();
     t.setHours(0, 0, 0, 0);
@@ -138,6 +122,8 @@ export function DatePicker({
         }}
         title={label}
         aria-label={label}
+        aria-haspopup="dialog"
+        aria-expanded={open}
         className={cn(
           "inline-flex items-center gap-1 rounded border bg-transparent tabular-nums transition-colors",
           size === "sm"
@@ -154,82 +140,85 @@ export function DatePicker({
         <CalendarIcon className="h-3 w-3 opacity-70" />
         <span className="whitespace-nowrap">{triggerText}</span>
       </button>
-      {open && (
-        <div className="absolute left-0 top-full z-40 mt-1 w-[252px] overflow-hidden rounded-md border border-line bg-elevated shadow-xl shadow-black/40">
-          <div className="flex items-center justify-between border-b border-line px-2 py-1.5">
-            <button
-              type="button"
-              onClick={() => setCursor((c) => addMonths(c, -1))}
-              className="rounded p-1 text-fg-subtle hover:bg-hover hover:text-fg"
-              aria-label="Previous month"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </button>
-            <div className="text-[12px] font-medium tracking-tight text-fg">
-              {cursor.toLocaleDateString(undefined, {
-                month: "long",
-                year: "numeric",
-              })}
-            </div>
-            <button
-              type="button"
-              onClick={() => setCursor((c) => addMonths(c, 1))}
-              className="rounded p-1 text-fg-subtle hover:bg-hover hover:text-fg"
-              aria-label="Next month"
-            >
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
-          </div>
-          <div className="grid grid-cols-7 gap-px px-2 pt-2 text-center text-[10px] font-medium uppercase tracking-wider text-fg-subtle">
-            {WEEKDAYS.map((d) => (
-              <div key={d}>{d}</div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-px p-1.5">
-            {grid.map((d) => {
-              const inMonth = d.getMonth() === cursor.getMonth();
-              const isToday = sameDay(d, today);
-              const isSelected = valueDate && sameDay(d, valueDate);
-              return (
-                <button
-                  key={d.toISOString()}
-                  type="button"
-                  onClick={() => select(d)}
-                  className={cn(
-                    "h-7 rounded text-[12px] tabular-nums transition-colors",
-                    isSelected
-                      ? "bg-brand-500 font-medium text-white hover:bg-brand-400"
-                      : inMonth
-                      ? "text-fg hover:bg-hover"
-                      : "text-fg-faint hover:bg-hover",
-                    !isSelected && isToday && "ring-1 ring-brand-500/40",
-                  )}
-                >
-                  {d.getDate()}
-                </button>
-              );
+      <Popover
+        open={open}
+        onClose={() => setOpen(false)}
+        anchorRef={ref}
+        className="w-[252px] rounded-md border border-line bg-elevated shadow-xl shadow-black/40"
+      >
+        <div className="flex items-center justify-between border-b border-line px-2 py-1.5">
+          <button
+            type="button"
+            onClick={() => setCursor((c) => addMonths(c, -1))}
+            className="rounded p-1 text-fg-subtle hover:bg-hover hover:text-fg"
+            aria-label="Previous month"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </button>
+          <div className="text-[12px] font-medium tracking-tight text-fg">
+            {cursor.toLocaleDateString(undefined, {
+              month: "long",
+              year: "numeric",
             })}
           </div>
-          <div className="flex items-center justify-between border-t border-line px-2 py-1.5">
+          <button
+            type="button"
+            onClick={() => setCursor((c) => addMonths(c, 1))}
+            className="rounded p-1 text-fg-subtle hover:bg-hover hover:text-fg"
+            aria-label="Next month"
+          >
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        <div className="grid grid-cols-7 gap-px px-2 pt-2 text-center text-[10px] font-medium uppercase tracking-wider text-fg-subtle">
+          {WEEKDAYS.map((d) => (
+            <div key={d}>{d}</div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-px p-1.5">
+          {grid.map((d) => {
+            const inMonth = d.getMonth() === cursor.getMonth();
+            const isToday = sameDay(d, today);
+            const isSelected = valueDate && sameDay(d, valueDate);
+            return (
+              <button
+                key={d.toISOString()}
+                type="button"
+                onClick={() => select(d)}
+                className={cn(
+                  "h-7 rounded text-[12px] tabular-nums transition-colors",
+                  isSelected
+                    ? "bg-brand-500 font-medium text-white hover:bg-brand-400"
+                    : inMonth
+                    ? "text-fg hover:bg-hover"
+                    : "text-fg-faint hover:bg-hover",
+                  !isSelected && isToday && "ring-1 ring-brand-500/40",
+                )}
+              >
+                {d.getDate()}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex items-center justify-between border-t border-line px-2 py-1.5">
+          <button
+            type="button"
+            onClick={() => select(today)}
+            className="rounded px-2 py-0.5 text-[11px] font-medium text-fg-subtle hover:bg-hover hover:text-fg"
+          >
+            Today
+          </button>
+          {value && (
             <button
               type="button"
-              onClick={() => select(today)}
-              className="rounded px-2 py-0.5 text-[11px] font-medium text-fg-subtle hover:bg-hover hover:text-fg"
+              onClick={clear}
+              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium text-fg-subtle hover:bg-rose-500/10 hover:text-rose-500"
             >
-              Today
+              <X className="h-3 w-3" /> Clear
             </button>
-            {value && (
-              <button
-                type="button"
-                onClick={clear}
-                className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium text-fg-subtle hover:bg-rose-500/10 hover:text-rose-500"
-              >
-                <X className="h-3 w-3" /> Clear
-              </button>
-            )}
-          </div>
+          )}
         </div>
-      )}
+      </Popover>
     </div>
   );
 }
