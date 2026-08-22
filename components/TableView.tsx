@@ -211,8 +211,6 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                       )}
                       <Th className="w-[64px] whitespace-nowrap">ID</Th>
                       <Th className="w-[44%] min-w-[320px]">Task</Th>
-                      <Th className="w-[96px]">Owners</Th>
-                      <Th className="w-[150px]">Requester</Th>
                       <th
                         className={cn(
                           "w-[140px] cursor-pointer select-none px-3 py-1.5 text-left font-medium transition-colors hover:text-fg",
@@ -232,6 +230,8 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                           )}
                         </span>
                       </th>
+                      <Th className="w-[96px]">Owners</Th>
+                      <Th className="w-[150px]">Requester</Th>
                       <Th className="w-[120px]">Priority</Th>
                       <Th className="w-[88px]">Start</Th>
                       <Th className="w-[88px]">Due</Th>
@@ -463,6 +463,16 @@ function Row({
         />
       </td>
       <td className="px-3">
+        <StatusPill
+          value={task.status}
+          disabled={readOnly}
+          onChange={(v) => {
+            updateTask(board.id, task.id, { status: v });
+            notifyRequester(board, task, v);
+          }}
+        />
+      </td>
+      <td className="px-3">
         <AssigneePicker
           members={board.members}
           selected={task.assigneeIds}
@@ -481,16 +491,6 @@ function Row({
           onCreate={(name, phone, email) =>
             addContact(board.id, name, phone, email)
           }
-        />
-      </td>
-      <td className="px-3">
-        <StatusPill
-          value={task.status}
-          disabled={readOnly}
-          onChange={(v) => {
-            updateTask(board.id, task.id, { status: v });
-            notifyRequester(board, task, v);
-          }}
         />
       </td>
       <td className="px-3">
