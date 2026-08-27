@@ -19,6 +19,7 @@ interface Props {
 
 export function KpiYearShell({ year }: Props) {
   const sets = useKpiStore((s) => s.sets);
+  const hydrated = useKpiStore((s) => s.hydrated);
   const createSet = useKpiStore((s) => s.createSet);
   const renameSet = useKpiStore((s) => s.renameSet);
   const setHydrated = useKpiStore((s) => s.setHydrated);
@@ -34,8 +35,10 @@ export function KpiYearShell({ year }: Props) {
   const kpiSet = sets.find((s) => s.year === year);
 
   useEffect(() => {
-    if (!kpiSet) createSet(year);
-  }, [year, kpiSet, createSet]);
+    // Wait for the Supabase sync before creating, or a fresh browser would
+    // race the fetch and upsert an empty duplicate set for this year.
+    if (hydrated && !kpiSet) createSet(year);
+  }, [year, hydrated, kpiSet, createSet]);
 
   useEffect(() => {
     if (kpiSet) return;

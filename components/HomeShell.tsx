@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, LayoutGrid, Layout, Calendar, Target } from "lucide-react";
+import { Plus, Trash2, LayoutGrid, Layout, Calendar, Target, BadgeCheck } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Modal } from "./Modal";
 import { AvatarStack } from "./Avatar";
@@ -81,6 +81,13 @@ export function HomeShell() {
             >
               <Target className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">KPI</span>
+            </Link>
+            <Link
+              href="/jd"
+              className="flex shrink-0 items-center gap-1 text-[12px] text-fg-subtle hover:text-fg"
+            >
+              <BadgeCheck className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">JD</span>
             </Link>
           </div>
 

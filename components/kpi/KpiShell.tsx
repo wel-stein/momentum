@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Plus, Trash2, Target, ChevronRight } from "lucide-react";
+import { Plus, Trash2, Target, ChevronRight, BadgeCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useKpiStore } from "@/lib/kpi-store";
 import { kpiSetAchievedScore, kpiAssessedCount } from "@/lib/kpi-types";
@@ -61,6 +61,13 @@ export function KpiShell() {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href="/jd"
+              className="mr-1 flex items-center gap-1 text-[12px] text-fg-subtle hover:text-fg"
+            >
+              <BadgeCheck className="h-3.5 w-3.5" />
+              JD
+            </Link>
             <button
               onClick={() => setShowNew(true)}
               className="inline-flex items-center gap-1.5 rounded bg-brand-500 px-2.5 py-1 text-[12px] font-medium text-white hover:bg-brand-400"
