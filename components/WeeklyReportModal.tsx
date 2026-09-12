@@ -347,8 +347,8 @@ export function WeeklyReportModal({ board, open, onClose, senderName }: Props) {
               To — Recipients
             </div>
             <RecipientInput recipients={recipients} onChange={setRecipients} />
-            <div className="mt-1 flex items-center gap-1 text-[10px] text-fg-faint">
-              <Mail className="h-3 w-3" />
+            <div className="mt-1 flex items-start gap-1 text-[10px] text-fg-faint">
+              <Mail className="mt-px h-3 w-3 shrink-0" />
               Always BCC'd: {BCC_ADDRESS} &middot; Type an email and press Enter or comma to add
             </div>
           </div>
@@ -361,7 +361,7 @@ export function WeeklyReportModal({ board, open, onClose, senderName }: Props) {
             <div className="space-y-3 rounded-md border border-line bg-subtle p-3">
               {sections.map((section) => (
                 <div key={section.groupKey}>
-                  <div className="mb-1.5 flex items-center gap-2">
+                  <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span
                       className="inline-block h-3 w-0.5 rounded-full"
                       style={{ background: section.accent }}
@@ -376,7 +376,7 @@ export function WeeklyReportModal({ board, open, onClose, senderName }: Props) {
                     </span>
                     <span
                       className={cn(
-                        "ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                        "rounded-full px-1.5 py-0.5 text-[10px] font-medium sm:ml-auto",
                         section.tasks.length > 0
                           ? "bg-emerald-500/10 text-emerald-600"
                           : "bg-hover text-fg-faint",

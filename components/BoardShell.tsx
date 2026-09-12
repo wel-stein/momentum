@@ -9,6 +9,7 @@ import {
   Eye,
   LayoutGrid,
   Mail,
+  MoreHorizontal,
   Plus,
   Search,
   Share2,
@@ -28,6 +29,7 @@ import { InviteMembersModal } from "./InviteMembersModal";
 import { ShareModal } from "./ShareModal";
 import { WeeklyReportModal } from "./WeeklyReportModal";
 import { Modal } from "./Modal";
+import { Popover } from "./Popover";
 import { RealtimeSync } from "./RealtimeSync";
 import { SyncBanner } from "./SyncBanner";
 import { BoardProvider } from "./BoardContext";
@@ -231,6 +233,8 @@ export function BoardShell({
                 {taskCode(board.id)}
               </span>
             </div>
+            {/* Desktop board actions. Below `sm` they collapse into the
+                overflow menu rendered right after this row. */}
             <div className="ml-3 hidden items-center gap-2 sm:flex">
               <AvatarStack members={board.members} max={4} size="sm" />
               {!readOnly && (
@@ -264,6 +268,14 @@ export function BoardShell({
                 </>
               )}
             </div>
+            {!readOnly && (
+              <BoardActionsMenu
+                sharing={!!board.shareToken}
+                onInvite={() => setShowInvite(true)}
+                onShare={() => setShowShare(true)}
+                onReport={() => setShowReport(true)}
+              />
+            )}
             <div className="ml-auto flex items-center gap-3">
               <div className="hidden items-center gap-2 sm:flex">
                 <div className="h-1 w-32 overflow-hidden rounded-full bg-hover">
@@ -442,6 +454,105 @@ export function BoardShell({
         )}
       </div>
     </BoardProvider>
+  );
+}
+
+/**
+ * Overflow menu for the header actions (invite / share / weekly report).
+ *
+ * Those buttons only fit next to the board title on wider screens, so the
+ * row holding them is `sm:flex`. This menu is its `sm:hidden` counterpart —
+ * without it the actions, weekly report included, were simply unreachable on
+ * a phone.
+ */
+function BoardActionsMenu({
+  sharing,
+  onInvite,
+  onShare,
+  onReport,
+}: {
+  sharing: boolean;
+  onInvite: () => void;
+  onShare: () => void;
+  onReport: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // The trigger only exists below `sm`. If the viewport grows past the
+  // breakpoint while the menu is open its anchor disappears, leaving the
+  // portalled panel floating at the top-left corner — so close it.
+  useEffect(() => {
+    if (!open) return;
+    const mq = window.matchMedia("(min-width: 640px)");
+    if (mq.matches) {
+      setOpen(false);
+      return;
+    }
+    const onChange = (e: MediaQueryListEvent) => {
+      if (e.matches) setOpen(false);
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [open]);
+
+  const items: { key: string; label: string; icon: React.ReactNode; run: () => void }[] = [
+    {
+      key: "invite",
+      label: "Invite members",
+      icon: <UserPlus className="h-3.5 w-3.5 text-fg-subtle" />,
+      run: onInvite,
+    },
+    {
+      key: "share",
+      label: sharing ? "Sharing settings" : "Share board",
+      icon: <Share2 className="h-3.5 w-3.5 text-fg-subtle" />,
+      run: onShare,
+    },
+    {
+      key: "report",
+      label: "Weekly report",
+      icon: <Mail className="h-3.5 w-3.5 text-fg-subtle" />,
+      run: onReport,
+    },
+  ];
+
+  return (
+    <div ref={ref} className="relative ml-1 sm:hidden">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="grid h-7 w-7 place-items-center rounded border border-line bg-hover text-fg-subtle hover:text-fg"
+        aria-label="Board actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <MoreHorizontal className="h-3.5 w-3.5" />
+      </button>
+      <Popover
+        open={open}
+        onClose={() => setOpen(false)}
+        anchorRef={ref}
+        align="start"
+        className="w-56 rounded-md border border-line bg-elevated py-1 shadow-xl shadow-black/40"
+      >
+        <div role="menu">
+          {items.map((i) => (
+            <button
+              key={i.key}
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                i.run();
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-fg hover:bg-hover"
+            >
+              {i.icon}
+              {i.label}
+            </button>
+          ))}
+        </div>
+      </Popover>
+    </div>
   );
 }
 
