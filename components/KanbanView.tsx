@@ -21,6 +21,7 @@ import { AvatarStack } from "./Avatar";
 import { PriorityIndicator } from "./PriorityPill";
 import { useReadOnly } from "./BoardContext";
 import { useRequesterNotify } from "./useRequesterNotify";
+import { TimeBadge } from "./TimeTracker";
 
 interface Props {
   board: Board;
@@ -269,21 +270,22 @@ function CardInner({
           )}
         </div>
       )}
-      <div className="mt-2.5 flex items-center justify-between">
-        {task.dueDate ? (
-          <span
-            className={cn(
-              "text-[11px] tabular-nums",
-              overdue && task.status !== "done"
-                ? "text-rose-400"
-                : "text-fg-subtle",
-            )}
-          >
-            {formatDateSmart(task.dueDate)}
-          </span>
-        ) : (
-          <span />
-        )}
+      <div className="mt-2.5 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1.5">
+          {task.dueDate && (
+            <span
+              className={cn(
+                "text-[11px] tabular-nums",
+                overdue && task.status !== "done"
+                  ? "text-rose-400"
+                  : "text-fg-subtle",
+              )}
+            >
+              {formatDateSmart(task.dueDate)}
+            </span>
+          )}
+          <TimeBadge task={task} />
+        </div>
         {assignees.length > 0 && (
           <AvatarStack members={assignees} max={3} size="xs" />
         )}

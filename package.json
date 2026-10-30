@@ -9,6 +9,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "migrate": "node --env-file=.env.local scripts/migrate.mjs",
+    "test": "node --test --experimental-strip-types lib/*.test.ts",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui"
   },

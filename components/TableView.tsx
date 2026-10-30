@@ -10,6 +10,7 @@ import { PriorityPill } from "./PriorityPill";
 import { AssigneePicker } from "./AssigneePicker";
 import { RequesterPicker } from "./RequesterPicker";
 import { DatePicker } from "./DatePicker";
+import { TimeCell } from "./TimeTracker";
 import { useReadOnly } from "./BoardContext";
 import { useConfirm } from "./ConfirmDialog";
 import { useRequesterNotify } from "./useRequesterNotify";
@@ -235,6 +236,7 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                       <Th className="w-[120px]">Priority</Th>
                       <Th className="w-[88px]">Start</Th>
                       <Th className="w-[88px]">Due</Th>
+                      <Th className="w-[104px]">Time</Th>
                       <Th className="w-[160px]">Tags</Th>
                       <Th className="w-8" />
                     </tr>
@@ -244,7 +246,7 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                         somewhere to type immediately. */}
                     {!readOnly && tasks.length === 0 && (
                       <tr>
-                        <td colSpan={readOnly ? 10 : 11} className="px-2 py-1">
+                        <td colSpan={readOnly ? 11 : 12} className="px-2 py-1">
                           <AddRow
                             onAdd={(title) => addTask(board.id, g.id, title)}
                           />
@@ -254,7 +256,7 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                     {tasks.length === 0 && (
                       <tr>
                         <td
-                          colSpan={readOnly ? 10 : 11}
+                          colSpan={readOnly ? 11 : 12}
                           className="px-4 py-4 text-center text-[11px] text-fg-subtle"
                         >
                           No tasks yet — start typing above.
@@ -284,7 +286,7 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                     {isDropTarget && (
                       <tr>
                         <td
-                          colSpan={readOnly ? 10 : 11}
+                          colSpan={readOnly ? 11 : 12}
                           className="border-t-2 border-brand-500/50 bg-brand-500/5 py-2 text-center text-[11px] text-brand-500"
                         >
                           Drop here to move into &ldquo;{g.name}&rdquo;
@@ -295,7 +297,7 @@ export function TableView({ board, onOpenTask, filter }: Props) {
                         tasks, where new items naturally land. */}
                     {!readOnly && tasks.length > 0 && (
                       <tr>
-                        <td colSpan={readOnly ? 10 : 11} className="px-2 py-1">
+                        <td colSpan={readOnly ? 11 : 12} className="px-2 py-1">
                           <AddRow
                             onAdd={(title) => addTask(board.id, g.id, title)}
                           />
@@ -516,6 +518,9 @@ function Row({
           overdue={overdue && task.status !== "done"}
           label="Due date"
         />
+      </td>
+      <td className="px-3">
+        <TimeCell board={board} task={task} />
       </td>
       <td className="px-3">
         <div className="flex flex-wrap gap-1">

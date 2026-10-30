@@ -40,6 +40,24 @@ export interface Contact {
   email?: string | null;
 }
 
+/**
+ * One stretch of work on a task. `endedAt === null` means the stopwatch is
+ * still running — the timer lives in the database rather than in the tab,
+ * so a refresh (or a different device) picks it up where it left off.
+ */
+export interface TimeEntry {
+  id: string;
+  taskId: string;
+  /** Board member who logged it; null if they have since been removed. */
+  memberId?: string | null;
+  startedAt: string; // ISO
+  endedAt?: string | null; // ISO, null while running
+  /** "timer" = started/stopped here, "manual" = a duration typed in. */
+  source: "timer" | "manual";
+  note?: string | null;
+  createdAt: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -52,6 +70,8 @@ export interface Task {
   dueDate?: string; // ISO
   tags: string[];
   groupId: string;
+  /** Every logged stretch of work; the task's duration is their sum. */
+  timeEntries: TimeEntry[];
   createdAt: string;
   updatedAt: string;
 }

@@ -11,6 +11,7 @@ import { PriorityPill } from "./PriorityPill";
 import { AssigneePicker } from "./AssigneePicker";
 import { RequesterPicker } from "./RequesterPicker";
 import { DatePicker } from "./DatePicker";
+import { TimePanel } from "./TimeTracker";
 import { useReadOnly } from "./BoardContext";
 import { useConfirm } from "./ConfirmDialog";
 import { useRequesterNotify } from "./useRequesterNotify";
@@ -187,6 +188,9 @@ export function TaskModal({ board, taskId, onClose }: Props) {
               label="Due date"
             />
           </Field>
+          <Field label="Time">
+            <TimePanel board={board} task={task} />
+          </Field>
           <Field label="Tags">
             <div className="flex w-full flex-col gap-2">
               {task.tags.length > 0 && (
@@ -273,7 +277,7 @@ function Field({
       <div className="flex items-center text-[11px] uppercase tracking-wider text-fg-subtle">
         {label}
       </div>
-      <div className="flex items-center">{children}</div>
+      <div className="flex min-w-0 items-center">{children}</div>
     </>
   );
 }
