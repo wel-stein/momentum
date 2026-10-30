@@ -101,6 +101,17 @@ export function RealtimeSync({ boardId }: { boardId: string }) {
         },
         forward("tasks"),
       )
+      .on(
+        //
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "task_time_entries",
+          filter: `board_id=eq.${boardId}`,
+        },
+        forward("task_time_entries"),
+      )
       // task_assignees rows don't carry a board_id, so we can't filter
       // server-side. The reducer searches the local store for the matching
       // task by id, which is cheap.

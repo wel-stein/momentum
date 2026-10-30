@@ -11,16 +11,19 @@ import type {
   Priority,
   StatusKey,
   Task,
+  TimeEntry,
   ViewType,
 } from "./types";
 import { BOARD_EMOJIS, GROUP_COLORS } from "./constants";
 import { makeSampleBoard } from "./sample";
+import { runningEntry } from "./time";
 import { pickAvatarColor } from "./utils";
 import {
   deleteBoard as dbDeleteBoard,
   deleteGroup as dbDeleteGroup,
   deleteMember as dbDeleteMember,
   deleteTask as dbDeleteTask,
+  deleteTimeEntry as dbDeleteTimeEntry,
   fetchAllBoards,
   seedSampleBoard,
   setTaskAssignees,
@@ -29,6 +32,7 @@ import {
   upsertGroup,
   upsertMember,
   upsertTask,
+  upsertTimeEntry,
 } from "./db";
 import { isSupabaseConfigured } from "./supabase";
 import type { CurrentUser } from "./auth";
@@ -72,6 +76,24 @@ interface Actions {
   deleteTask: (boardId: string, taskId: string) => void;
 
   /**
+   * Start the stopwatch on a task. Any stopwatch this user has running
+   * elsewhere is stopped first — you can only work on one thing at a time,
+   * and two open timers would bill the same minutes twice.
+   */
+  startTimer: (boardId: string, taskId: string) => void;
+  /** Stop the stopwatch running on a task, closing its open entry. */
+  stopTimer: (boardId: string, taskId: string) => void;
+  /** Log a stretch of work that was not timed — a typed-in duration. */
+  addManualTime: (
+    boardId: string,
+    taskId: string,
+    durationMs: number,
+    note?: string,
+  ) => void;
+  /** Remove one logged entry; the task's total drops by that much. */
+  deleteTimeEntry: (boardId: string, taskId: string, entryId: string) => void;
+
+  /**
    * Add a person to the board's contact directory (e.g. a requester created
    * on the fly from the Requester picker). Returns the new contact's id.
    */
@@ -109,7 +131,8 @@ export interface RemoteChange {
     | "board_members"
     | "contacts"
     | "tasks"
-    | "task_assignees";
+    | "task_assignees"
+    | "task_time_entries";
   new: Record<string, unknown> | null;
   old: Record<string, unknown> | null;
 }
@@ -167,6 +190,59 @@ function claimMyMember(
     return { ...b, members: newMembers, updatedAt: nowIso() };
   });
   return { boards: next, upserts };
+}
+
+/**
+ * The board_members row that represents the signed-in user, so logged time
+ * carries an owner. Mirrors how claimMyMember identifies "me": by auth id
+ * first, then by the local id the store generated before sign-in.
+ */
+function myMemberId(
+  board: Board,
+  user: CurrentUser | null,
+  localId: string,
+): string | null {
+  if (user) {
+    const byAuth = board.members.find((m) => m.authUserId === user.id);
+    if (byAuth) return byAuth.id;
+    const byId = board.members.find((m) => m.id === user.id);
+    if (byId) return byId.id;
+  }
+  return board.members.find((m) => m.id === localId)?.id ?? null;
+}
+
+/**
+ * Close the stopwatch running on a task, if one is. Returns the updated
+ * task plus the entry to persist, or null when nothing was running.
+ */
+function closeRunningEntry(
+  task: Task,
+  at: string,
+): { task: Task; entry: TimeEntry } | null {
+  const open = runningEntry(task.timeEntries);
+  if (!open) return null;
+  const entry: TimeEntry = { ...open, endedAt: at };
+  return {
+    task: {
+      ...task,
+      timeEntries: task.timeEntries.map((e) =>
+        e.id === entry.id ? entry : e,
+      ),
+      updatedAt: at,
+    },
+    entry,
+  };
+}
+
+/** Insert or replace an entry on a task, keeping the log in record order. */
+function withEntry(task: Task, entry: TimeEntry, at: string): Task {
+  const idx = task.timeEntries.findIndex((e) => e.id === entry.id);
+  const entries =
+    idx >= 0
+      ? task.timeEntries.map((e) => (e.id === entry.id ? entry : e))
+      : [...task.timeEntries, entry];
+  entries.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  return { ...task, timeEntries: entries, updatedAt: at };
 }
 
 export const useStore = create<State & Actions>()(
@@ -461,6 +537,7 @@ export const useStore = create<State & Actions>()(
           assigneeIds: [],
           tags: [],
           groupId,
+          timeEntries: [],
           createdAt: now,
           updatedAt: now,
         };
@@ -476,6 +553,7 @@ export const useStore = create<State & Actions>()(
 
       updateTask: (boardId, taskId, patch) => {
         let touched: Task | undefined;
+        let stopped: TimeEntry | undefined;
         set((s) => ({
           boards: s.boards.map((b) => {
             if (b.id !== boardId) return b;
@@ -483,13 +561,26 @@ export const useStore = create<State & Actions>()(
               ...b,
               tasks: b.tasks.map((t) => {
                 if (t.id !== taskId) return t;
-                touched = { ...t, ...patch, updatedAt: nowIso() };
+                const at = nowIso();
+                let next: Task = { ...t, ...patch, updatedAt: at };
+                // Marking a task done stops its stopwatch. Without this a
+                // timer someone forgot keeps piling hours onto finished
+                // work — the most common way time tracking goes wrong.
+                if (patch.status === "done") {
+                  const closed = closeRunningEntry(next, at);
+                  if (closed) {
+                    next = closed.task;
+                    stopped = closed.entry;
+                  }
+                }
+                touched = next;
                 return touched;
               }),
               updatedAt: nowIso(),
             };
           }),
         }));
+        if (stopped) fnf(upsertTimeEntry(boardId, stopped));
         if (!touched) return;
         const next = touched;
         // If this patch assigns a requester, sync the contact row first so
@@ -516,6 +607,7 @@ export const useStore = create<State & Actions>()(
 
       moveTask: (boardId, taskId, toGroupId, toStatus) => {
         let touched: Task | undefined;
+        let stopped: TimeEntry | undefined;
         set((s) => ({
           boards: s.boards.map((b) => {
             if (b.id !== boardId) return b;
@@ -523,18 +615,30 @@ export const useStore = create<State & Actions>()(
               ...b,
               tasks: b.tasks.map((t) => {
                 if (t.id !== taskId) return t;
-                touched = {
+                const at = nowIso();
+                let next: Task = {
                   ...t,
                   groupId: toGroupId,
                   ...(toStatus ? { status: toStatus } : {}),
-                  updatedAt: nowIso(),
+                  updatedAt: at,
                 };
+                // Same rule as updateTask: dropping a card into Done on the
+                // kanban board stops whatever it had running.
+                if (toStatus === "done") {
+                  const closed = closeRunningEntry(next, at);
+                  if (closed) {
+                    next = closed.task;
+                    stopped = closed.entry;
+                  }
+                }
+                touched = next;
                 return touched;
               }),
               updatedAt: nowIso(),
             };
           }),
         }));
+        if (stopped) fnf(upsertTimeEntry(boardId, stopped));
         if (touched) fnf(upsertTask(boardId, touched));
       },
 
@@ -551,6 +655,163 @@ export const useStore = create<State & Actions>()(
           ),
         }));
         fnf(dbDeleteTask(taskId));
+      },
+
+      startTimer: (boardId, taskId) => {
+        const state = get();
+        const board = state.boards.find((b) => b.id === boardId);
+        const task = board?.tasks.find((t) => t.id === taskId);
+        if (!board || !task) return;
+        // Already counting — a second start would open a second interval
+        // over the same minutes.
+        if (runningEntry(task.timeEntries)) return;
+
+        const now = nowIso();
+        const mineHere = myMemberId(board, state.currentUser, state.currentUserId);
+        const writes: Array<Promise<void>> = [];
+
+        // One stopwatch at a time. Close whatever else of mine is still
+        // open — on this board or any other — before opening a new one.
+        let boards = state.boards.map((b) => {
+          const mine = myMemberId(b, state.currentUser, state.currentUserId);
+          if (!mine) return b;
+          let touched = false;
+          const tasks = b.tasks.map((t) => {
+            const open = runningEntry(t.timeEntries);
+            // Only ever auto-close my own timers; a teammate's stays theirs.
+            if (!open || open.memberId !== mine) return t;
+            const closed = closeRunningEntry(t, now);
+            if (!closed) return t;
+            touched = true;
+            writes.push(upsertTimeEntry(b.id, closed.entry));
+            return closed.task;
+          });
+          return touched ? { ...b, tasks, updatedAt: now } : b;
+        });
+
+        const entry: TimeEntry = {
+          id: nanoid(10),
+          taskId,
+          memberId: mineHere,
+          startedAt: now,
+          endedAt: null,
+          source: "timer",
+          note: null,
+          createdAt: now,
+        };
+        writes.push(upsertTimeEntry(boardId, entry));
+
+        let startedTask: Task | undefined;
+        boards = boards.map((b) =>
+          b.id !== boardId
+            ? b
+            : {
+                ...b,
+                tasks: b.tasks.map((t) => {
+                  if (t.id !== taskId) return t;
+                  const next = withEntry(t, entry, now);
+                  // Starting work on an untouched task means it is now in
+                  // progress. Any other status (stuck, review, done) is a
+                  // deliberate choice, so leave it alone.
+                  startedTask =
+                    next.status === "not_started"
+                      ? { ...next, status: "in_progress" }
+                      : next;
+                  return startedTask;
+                }),
+                updatedAt: now,
+              },
+        );
+        set({ boards });
+        if (startedTask && startedTask.status !== task.status) {
+          writes.push(upsertTask(boardId, startedTask));
+        }
+        fnf(Promise.all(writes));
+      },
+
+      stopTimer: (boardId, taskId) => {
+        const board = get().boards.find((b) => b.id === boardId);
+        const task = board?.tasks.find((t) => t.id === taskId);
+        if (!board || !task) return;
+        const closed = closeRunningEntry(task, nowIso());
+        if (!closed) return;
+        set((s) => ({
+          boards: s.boards.map((b) =>
+            b.id !== boardId
+              ? b
+              : {
+                  ...b,
+                  tasks: b.tasks.map((t) =>
+                    t.id === taskId ? closed.task : t,
+                  ),
+                  updatedAt: closed.task.updatedAt,
+                },
+          ),
+        }));
+        fnf(upsertTimeEntry(boardId, closed.entry));
+      },
+
+      addManualTime: (boardId, taskId, durationMs, note) => {
+        if (!Number.isFinite(durationMs) || durationMs <= 0) return;
+        const state = get();
+        const board = state.boards.find((b) => b.id === boardId);
+        const task = board?.tasks.find((t) => t.id === taskId);
+        if (!board || !task) return;
+
+        // Typed-in time is stored as an interval like any other, ending
+        // now, so totals and the log have a single shape to read.
+        const now = Date.now();
+        const entry: TimeEntry = {
+          id: nanoid(10),
+          taskId,
+          memberId: myMemberId(board, state.currentUser, state.currentUserId),
+          startedAt: new Date(now - Math.round(durationMs)).toISOString(),
+          endedAt: new Date(now).toISOString(),
+          source: "manual",
+          note: note?.trim() || null,
+          createdAt: new Date(now).toISOString(),
+        };
+        const at = entry.createdAt;
+        set((s) => ({
+          boards: s.boards.map((b) =>
+            b.id !== boardId
+              ? b
+              : {
+                  ...b,
+                  tasks: b.tasks.map((t) =>
+                    t.id === taskId ? withEntry(t, entry, at) : t,
+                  ),
+                  updatedAt: at,
+                },
+          ),
+        }));
+        fnf(upsertTimeEntry(boardId, entry));
+      },
+
+      deleteTimeEntry: (boardId, taskId, entryId) => {
+        const at = nowIso();
+        set((s) => ({
+          boards: s.boards.map((b) =>
+            b.id !== boardId
+              ? b
+              : {
+                  ...b,
+                  tasks: b.tasks.map((t) =>
+                    t.id !== taskId
+                      ? t
+                      : {
+                          ...t,
+                          timeEntries: t.timeEntries.filter(
+                            (e) => e.id !== entryId,
+                          ),
+                          updatedAt: at,
+                        },
+                  ),
+                  updatedAt: at,
+                },
+          ),
+        }));
+        fnf(dbDeleteTimeEntry(entryId));
       },
 
       addContact: (boardId, name, phone, email) => {
@@ -730,6 +991,8 @@ function applyRemoteChangeReducer(
       return mergeTaskRow(boards, c);
     case "task_assignees":
       return mergeAssigneeRow(boards, c);
+    case "task_time_entries":
+      return mergeTimeEntryRow(boards, c);
     default:
       return NO_CHANGE;
   }
@@ -894,6 +1157,9 @@ function mergeTaskRow(boards: Board[], c: RemoteChange) {
       // task_assignees has its own subscription; preserve current value.
       assigneeIds:
         existingIdx >= 0 ? board.tasks[existingIdx].assigneeIds : [],
+      // Likewise task_time_entries — a task UPDATE carries no log rows.
+      timeEntries:
+        existingIdx >= 0 ? board.tasks[existingIdx].timeEntries : [],
       requesterId: (r.requester_id as string | null) ?? null,
       startDate: (r.start_date as string | null) ?? undefined,
       dueDate: (r.due_date as string | null) ?? undefined,
@@ -909,6 +1175,51 @@ function mergeTaskRow(boards: Board[], c: RemoteChange) {
   }
   const next = boards.slice();
   next[idx] = board;
+  return { boards: next };
+}
+
+function mergeTimeEntryRow(boards: Board[], c: RemoteChange) {
+  const boardId = (c.new?.board_id ?? c.old?.board_id) as string | undefined;
+  const bi = findBoardIdx(boards, boardId);
+  if (bi < 0) return NO_CHANGE;
+  const taskId = (c.new?.task_id ?? c.old?.task_id) as string | undefined;
+  if (!taskId) return NO_CHANGE;
+  const ti = boards[bi].tasks.findIndex((t) => t.id === taskId);
+  if (ti < 0) return NO_CHANGE;
+  const task = boards[bi].tasks[ti];
+
+  let entries: TimeEntry[];
+  if (c.eventType === "DELETE") {
+    const id = c.old?.id as string | undefined;
+    if (!id) return NO_CHANGE;
+    entries = task.timeEntries.filter((e) => e.id !== id);
+    if (entries.length === task.timeEntries.length) return NO_CHANGE;
+  } else if (c.new) {
+    const r = c.new;
+    const entry: TimeEntry = {
+      id: r.id as string,
+      taskId,
+      memberId: (r.member_id as string | null) ?? null,
+      startedAt: r.started_at as string,
+      endedAt: (r.ended_at as string | null) ?? null,
+      source: r.source === "manual" ? "manual" : "timer",
+      note: (r.note as string | null) ?? null,
+      createdAt: (r.created_at as string) ?? (r.started_at as string),
+    };
+    const ei = task.timeEntries.findIndex((e) => e.id === entry.id);
+    entries =
+      ei >= 0
+        ? task.timeEntries.map((e) => (e.id === entry.id ? entry : e))
+        : [...task.timeEntries, entry];
+    entries.sort((a, z) => a.createdAt.localeCompare(z.createdAt));
+  } else {
+    return NO_CHANGE;
+  }
+
+  const tasks = boards[bi].tasks.slice();
+  tasks[ti] = { ...task, timeEntries: entries };
+  const next = boards.slice();
+  next[bi] = { ...boards[bi], tasks };
   return { boards: next };
 }
 

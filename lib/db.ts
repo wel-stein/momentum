@@ -1,6 +1,6 @@
 "use client";
 
-import type { Board, Contact, Group, Member, Task } from "./types";
+import type { Board, Contact, Group, Member, Task, TimeEntry } from "./types";
 import { getSupabase } from "./supabase";
 
 interface BoardRow {
@@ -46,6 +46,17 @@ interface TaskRow {
   created_at: string;
   updated_at: string;
   task_assignees?: { member_id: string }[];
+  task_time_entries?: TimeEntryRow[];
+}
+interface TimeEntryRow {
+  id: string;
+  task_id: string;
+  member_id: string | null;
+  started_at: string;
+  ended_at: string | null;
+  source: string;
+  note: string | null;
+  created_at: string;
 }
 interface ContactRow {
   id: string;
@@ -73,7 +84,9 @@ export async function fetchAllBoards(): Promise<FetchResult<Board[]>> {
        contacts (id, board_id, name, phone, email),
        tasks (id, board_id, group_id, title, description, status, priority,
               requester_id, start_date, due_date, tags, created_at, updated_at,
-              task_assignees (member_id))`,
+              task_assignees (member_id),
+              task_time_entries (id, task_id, member_id, started_at, ended_at,
+                                 source, note, created_at))`,
     )
     .order("updated_at", { ascending: false });
   if (error) {
@@ -125,6 +138,12 @@ function rowToBoard(b: BoardRow & {
     dueDate: t.due_date ?? undefined,
     tags: t.tags ?? [],
     groupId: t.group_id,
+    timeEntries: (t.task_time_entries ?? [])
+      .map(rowToTimeEntry)
+      // Ordered by when each was recorded, not by startedAt: a typed-in
+      // duration derives its start (now minus the duration), so sorting on
+      // it would shuffle manual entries into the middle of the history.
+      .sort((a, c) => a.createdAt.localeCompare(c.createdAt)),
     createdAt: t.created_at,
     updatedAt: t.updated_at,
   }));
@@ -144,6 +163,19 @@ function rowToBoard(b: BoardRow & {
   };
 }
 
+function rowToTimeEntry(r: TimeEntryRow): TimeEntry {
+  return {
+    id: r.id,
+    taskId: r.task_id,
+    memberId: r.member_id ?? null,
+    startedAt: r.started_at,
+    endedAt: r.ended_at ?? null,
+    source: r.source === "manual" ? "manual" : "timer",
+    note: r.note ?? null,
+    createdAt: r.created_at ?? r.started_at,
+  };
+}
+
 export async function fetchBoardByToken(
   token: string,
 ): Promise<Board | null> {
@@ -158,7 +190,9 @@ export async function fetchBoardByToken(
        contacts (id, board_id, name, phone, email),
        tasks (id, board_id, group_id, title, description, status, priority,
               requester_id, start_date, due_date, tags, created_at, updated_at,
-              task_assignees (member_id))`,
+              task_assignees (member_id),
+              task_time_entries (id, task_id, member_id, started_at, ended_at,
+                                 source, note, created_at))`,
     )
     .eq("share_token", token)
     .maybeSingle();
@@ -292,6 +326,37 @@ export async function setTaskAssignees(taskId: string, memberIds: string[]) {
     .from("task_assignees")
     .insert(memberIds.map((mid) => ({ task_id: taskId, member_id: mid })));
   logErr("setAssignees", error);
+}
+
+export async function upsertTimeEntry(
+  boardId: string,
+  entry: TimeEntry,
+) {
+  const sb = getSupabase();
+  if (!sb) return;
+  const { error } = await sb.from("task_time_entries").upsert({
+    id: entry.id,
+    task_id: entry.taskId,
+    board_id: boardId,
+    member_id: entry.memberId ?? null,
+    started_at: entry.startedAt,
+    ended_at: entry.endedAt ?? null,
+    source: entry.source,
+    note: entry.note ?? null,
+    created_at: entry.createdAt,
+    updated_at: new Date().toISOString(),
+  });
+  logErr("upsertTimeEntry", error);
+}
+
+export async function deleteTimeEntry(entryId: string) {
+  const sb = getSupabase();
+  if (!sb) return;
+  const { error } = await sb
+    .from("task_time_entries")
+    .delete()
+    .eq("id", entryId);
+  logErr("deleteTimeEntry", error);
 }
 
 export async function deleteTask(taskId: string) {
