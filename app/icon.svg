@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="Momentum">
+  <defs>
+    <linearGradient id="momentum-brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a78bfa"/>
+      <stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="7" fill="url(#momentum-brand)"/>
+  <!-- An M whose right stem rises above its left: the monogram doubles as
+       an upward trend. Drawn as a stroked path, never <text> — favicon
+       renderers do not load fonts. -->
+  <path d="M8.6 23.6 V12.8 L16 19 L23.4 9.4 V23.6"
+        fill="none" stroke="#fff" stroke-width="4.4"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
