@@ -73,6 +73,12 @@ interface Actions {
     toGroupId: string,
     toStatus?: StatusKey,
   ) => void;
+  /**
+   * Move several tasks into one group at once (the table view's bulk
+   * action). One state update and one batch of writes, rather than N
+   * moveTask calls that each re-render the board.
+   */
+  moveTasks: (boardId: string, taskIds: string[], toGroupId: string) => void;
   deleteTask: (boardId: string, taskId: string) => void;
 
   /**
@@ -640,6 +646,38 @@ export const useStore = create<State & Actions>()(
         }));
         if (stopped) fnf(upsertTimeEntry(boardId, stopped));
         if (touched) fnf(upsertTask(boardId, touched));
+      },
+
+      moveTasks: (boardId, taskIds, toGroupId) => {
+        const ids = new Set(taskIds);
+        if (ids.size === 0) return;
+        const board = get().boards.find((b) => b.id === boardId);
+        if (!board) return;
+        // Guard a stale group id: a teammate may have deleted the group
+        // between the menu opening and the pick.
+        if (!board.groups.some((g) => g.id === toGroupId)) return;
+
+        const at = nowIso();
+        // Tasks already in the target group are left alone, so the write
+        // count matches what actually changed.
+        const moved = board.tasks
+          .filter((t) => ids.has(t.id) && t.groupId !== toGroupId)
+          .map((t) => ({ ...t, groupId: toGroupId, updatedAt: at }));
+        if (moved.length === 0) return;
+
+        const byId = new Map(moved.map((t) => [t.id, t]));
+        set((s) => ({
+          boards: s.boards.map((b) =>
+            b.id !== boardId
+              ? b
+              : {
+                  ...b,
+                  tasks: b.tasks.map((t) => byId.get(t.id) ?? t),
+                  updatedAt: at,
+                },
+          ),
+        }));
+        fnf(Promise.all(moved.map((t) => upsertTask(boardId, t))));
       },
 
       deleteTask: (boardId, taskId) => {
