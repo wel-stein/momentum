@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Trash2, ArrowUp, ArrowDown, ArrowUpDown, GripVertical, X } from "lucide-react";
-import type { Board, Task } from "@/lib/types";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronRight, FolderInput, Plus, Trash2, ArrowUp, ArrowDown, ArrowUpDown, GripVertical, X } from "lucide-react";
+import type { Board, Group, Task } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { cn, formatDateSmart, isOverdue, taskCode } from "@/lib/utils";
 import { StatusPill } from "./StatusPill";
@@ -10,6 +10,7 @@ import { PriorityPill } from "./PriorityPill";
 import { AssigneePicker } from "./AssigneePicker";
 import { RequesterPicker } from "./RequesterPicker";
 import { DatePicker } from "./DatePicker";
+import { Popover } from "./Popover";
 import { TimeCell } from "./TimeTracker";
 import { useReadOnly } from "./BoardContext";
 import { useConfirm } from "./ConfirmDialog";
@@ -32,6 +33,7 @@ export function TableView({ board, onOpenTask, filter }: Props) {
   const addTask = useStore((s) => s.addTask);
   const deleteTask = useStore((s) => s.deleteTask);
   const moveTask = useStore((s) => s.moveTask);
+  const moveTasks = useStore((s) => s.moveTasks);
   const toggleCollapsed = useStore((s) => s.toggleGroupCollapsed);
   const renameGroup = useStore((s) => s.renameGroup);
   const deleteGroup = useStore((s) => s.deleteGroup);
@@ -71,6 +73,19 @@ export function TableView({ board, onOpenTask, filter }: Props) {
       next.delete(id);
       return next;
     });
+  }
+
+  const selectedGroupIds = Array.from(
+    new Set(
+      board.tasks.filter((t) => selected.has(t.id)).map((t) => t.groupId),
+    ),
+  );
+
+  function moveSelectedTo(groupId: string) {
+    moveTasks(board.id, [...selected], groupId);
+    // Clearing matches delete: the action is finished, and the rows have
+    // visibly relocated to the target group's section.
+    setSelected(new Set());
   }
 
   async function deleteSelected() {
@@ -312,13 +327,21 @@ export function TableView({ board, onOpenTask, filter }: Props) {
         );
       })}
 
-      {/* Bulk-delete floating bar */}
+      {/* Bulk-action floating bar */}
       {!readOnly && selected.size > 0 && (
         <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2">
           <div className="flex items-center gap-3 rounded-lg border border-line bg-elevated px-4 py-2.5 shadow-xl shadow-black/40">
             <span className="text-[12px] text-fg-subtle">
               {selected.size} task{selected.size !== 1 ? "s" : ""} selected
             </span>
+            {/* Nowhere to move to on a single-group board. */}
+            {board.groups.length > 1 && (
+              <MoveToGroupMenu
+                groups={board.groups}
+                sourceGroupIds={selectedGroupIds}
+                onPick={moveSelectedTo}
+              />
+            )}
             <button
               onClick={deleteSelected}
               className="inline-flex items-center gap-1.5 rounded bg-rose-500 px-3 py-1 text-[12px] font-medium text-white hover:bg-rose-600"
@@ -336,6 +359,78 @@ export function TableView({ board, onOpenTask, filter }: Props) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Group picker for the bulk bar. Selected rows are deliberately not
+ * draggable (dragging one would otherwise pull it out of the selection),
+ * so this menu is how a multi-selection changes group.
+ */
+function MoveToGroupMenu({
+  groups,
+  sourceGroupIds,
+  onPick,
+}: {
+  groups: Group[];
+  /** Groups the current selection spans. */
+  sourceGroupIds: string[];
+  onPick: (groupId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="inline-flex items-center gap-1.5 rounded border border-line bg-hover px-3 py-1 text-[12px] font-medium text-fg hover:border-brand-500/40 hover:text-brand-500"
+      >
+        <FolderInput className="h-3 w-3" />
+        Move to
+        <ChevronDown className="h-3 w-3" />
+      </button>
+      <Popover
+        open={open}
+        onClose={() => setOpen(false)}
+        anchorRef={ref}
+        align="start"
+        className="w-56 rounded-md border border-line bg-elevated py-1 shadow-xl shadow-black/40"
+      >
+        <div role="menu">
+          {groups.map((g) => {
+            // Everything selected already sits here, so the move is a no-op.
+            const alreadyHere =
+              sourceGroupIds.length === 1 && sourceGroupIds[0] === g.id;
+            return (
+              <button
+                key={g.id}
+                role="menuitem"
+                disabled={alreadyHere}
+                onClick={() => {
+                  setOpen(false);
+                  onPick(g.id);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-fg hover:bg-hover disabled:cursor-default disabled:text-fg-faint disabled:hover:bg-transparent"
+              >
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ background: g.color }}
+                />
+                <span className="truncate">{g.name}</span>
+                {alreadyHere && (
+                  <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wide text-fg-faint">
+                    current
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </Popover>
     </div>
   );
 }
