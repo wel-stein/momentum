@@ -72,6 +72,7 @@ export function BoardShell({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
+  const [reportedFilter, setReportedFilter] = useState<string>("all");
   const [titleDraft, setTitleDraft] = useState("");
   const [localView, setLocalView] = useState<ViewType | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -109,6 +110,10 @@ export function BoardShell({
       if (statusFilter !== "all" && t.status !== statusFilter) return false;
       if (assigneeFilter !== "all" && !t.assigneeIds.includes(assigneeFilter))
         return false;
+      // Pairs with the status filter: "Done" + "Reported" is the set that
+      // has served its purpose and can be cleared off the board.
+      if (reportedFilter === "yes" && !t.reportedAt) return false;
+      if (reportedFilter === "no" && t.reportedAt) return false;
       if (q) {
         const hay = (
           t.title +
@@ -123,7 +128,7 @@ export function BoardShell({
       }
       return true;
     };
-  }, [search, statusFilter, assigneeFilter]);
+  }, [search, statusFilter, assigneeFilter, reportedFilter]);
 
   if (!boardOverride && (!auth.ready || !hydrated)) {
     return (
@@ -327,6 +332,15 @@ export function BoardShell({
               options={[
                 { value: "all", label: "All assignees" },
                 ...board.members.map((m) => ({ value: m.id, label: m.name })),
+              ]}
+            />
+            <SelectField
+              value={reportedFilter}
+              onChange={setReportedFilter}
+              options={[
+                { value: "all", label: "Reported & not" },
+                { value: "yes", label: "Reported" },
+                { value: "no", label: "Not reported" },
               ]}
             />
             {!readOnly && (

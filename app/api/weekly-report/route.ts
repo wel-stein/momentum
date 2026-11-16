@@ -28,6 +28,9 @@ function rateLimit(userId: string): boolean {
 
 interface Payload {
   recipients?: string[];
+  boardId?: string;
+  /** Tasks the report covers; stamped as reported once it sends. */
+  taskIds?: string[];
   boardName?: string;
   boardEmoji?: string;
   senderName?: string;
@@ -114,7 +117,27 @@ export async function POST(req: NextRequest) {
       nextWeek: body.nextWeek ?? [],
       backlog: body.backlog ?? [],
     });
-    return NextResponse.json({ ok: true });
+    // Stamp only after the mail is away: a task is "reported" because
+    // management received it, not because someone opened the dialog.
+    // The write runs as the signed-in user, so board RLS still applies.
+    const taskIds = (body.taskIds ?? []).filter(
+      (id) => typeof id === "string" && id.length > 0,
+    );
+    let marked = 0;
+    if (taskIds.length > 0) {
+      const { error: markErr, count } = await sb
+        .from("tasks")
+        .update({ reported_at: new Date().toISOString() }, { count: "exact" })
+        .in("id", taskIds);
+      if (markErr) {
+        // The report did send, so this is not a failed request — but the
+        // board would quietly show the wrong state, so make it findable.
+        console.error("[api/weekly-report] marking reported failed", markErr);
+      } else {
+        marked = count ?? 0;
+      }
+    }
+    return NextResponse.json({ ok: true, marked });
   } catch (e) {
     console.error("[api/weekly-report] failed", e);
     return NextResponse.json(

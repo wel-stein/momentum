@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, KeyboardEvent } from "react";
-import { X, Mail, Send, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { useEffect, useState, KeyboardEvent } from "react";
+import { X, Mail, Send, CheckCircle, AlertCircle, Loader2, CalendarClock } from "lucide-react";
 import { Modal } from "./Modal";
 import type { Board, Task } from "@/lib/types";
-import { STATUSES } from "@/lib/types";
+import { useStore } from "@/lib/store";
 import { getSupabase } from "@/lib/supabase";
+import {
+  buildReportSections,
+  memberName,
+  requesterName,
+  statusLabel,
+  toMailTasks,
+} from "@/lib/weekly-report";
 import { cn } from "@/lib/utils";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -16,76 +23,6 @@ const DEFAULT_RECIPIENTS = (
   .map((e) => e.trim())
   .filter((e) => EMAIL_RE.test(e));
 const BCC_ADDRESS = process.env.NEXT_PUBLIC_MAIL_BCC ?? "";
-
-const GROUP_KEYS = {
-  thisWeek: "this week",
-  nextWeek: "next week",
-  backlog: "backlog",
-} as const;
-
-function statusLabel(statusKey: string): string {
-  return STATUSES.find((s) => s.key === statusKey)?.label ?? statusKey;
-}
-
-function matchGroup(name: string, key: string): boolean {
-  return name.trim().toLowerCase() === key;
-}
-
-interface TaskSection {
-  label: string;
-  groupKey: string;
-  accent: string;
-  tasks: Task[];
-}
-
-function buildSections(board: Board): TaskSection[] {
-  const groupMap = new Map(board.groups.map((g) => [g.id, g.name]));
-  const tasksByGroup = new Map<string, Task[]>();
-  for (const task of board.tasks) {
-    const arr = tasksByGroup.get(task.groupId) ?? [];
-    arr.push(task);
-    tasksByGroup.set(task.groupId, arr);
-  }
-
-  function tasksFor(key: string): Task[] {
-    for (const group of board.groups) {
-      if (matchGroup(group.name, key)) {
-        return tasksByGroup.get(group.id) ?? [];
-      }
-    }
-    return [];
-  }
-
-  return [
-    {
-      label: "Completed this week",
-      groupKey: GROUP_KEYS.thisWeek,
-      accent: "#00c875",
-      tasks: tasksFor(GROUP_KEYS.thisWeek),
-    },
-    {
-      label: "Planned for next week",
-      groupKey: GROUP_KEYS.nextWeek,
-      accent: "#fdab3d",
-      tasks: tasksFor(GROUP_KEYS.nextWeek),
-    },
-    {
-      label: "In the pipeline",
-      groupKey: GROUP_KEYS.backlog,
-      accent: "#7c3aed",
-      tasks: tasksFor(GROUP_KEYS.backlog),
-    },
-  ];
-}
-
-function memberName(board: Board, id: string): string {
-  return board.members.find((m) => m.id === id)?.name ?? id;
-}
-
-function requesterName(board: Board, task: Task): string | null {
-  if (!task.requesterId) return null;
-  return board.contacts.find((c) => c.id === task.requesterId)?.name ?? null;
-}
 
 // ---------------------------------------------------------------------------
 // Recipient chip input
@@ -199,25 +136,34 @@ interface Props {
 type SendState = "idle" | "sending" | "success" | "error";
 
 export function WeeklyReportModal({ board, open, onClose, senderName }: Props) {
-  const [recipients, setRecipients] = useState<string[]>(DEFAULT_RECIPIENTS);
+  const setAutoReport = useStore((s) => s.setAutoReport);
+  const markTasksReported = useStore((s) => s.markTasksReported);
+  // Seed from the board's saved schedule when it has one, so reopening
+  // the dialog shows who the Friday report actually goes to.
+  const [recipients, setRecipients] = useState<string[]>(
+    board.autoReportEnabled && board.autoReportRecipients.length > 0
+      ? board.autoReportRecipients
+      : DEFAULT_RECIPIENTS,
+  );
   const [sendState, setSendState] = useState<SendState>("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
-  const sections = buildSections(board);
+  // Re-seed when the dialog opens: the board may have changed since mount.
+  useEffect(() => {
+    if (!open) return;
+    setRecipients(
+      board.autoReportEnabled && board.autoReportRecipients.length > 0
+        ? board.autoReportRecipients
+        : DEFAULT_RECIPIENTS,
+    );
+  }, [open, board.autoReportEnabled, board.autoReportRecipients]);
+
+  const sections = buildReportSections(board);
 
   async function handleSend() {
     if (recipients.length === 0) return;
     setSendState("sending");
     setErrorMsg("");
-
-    function toPayload(tasks: Task[]) {
-      return tasks.map((t) => ({
-        title: t.title,
-        status: statusLabel(t.status),
-        assignees: t.assigneeIds.map((id) => memberName(board, id)),
-        requester: requesterName(board, t),
-      }));
-    }
 
     // Attach the Supabase access token so the server route can gate
     // sending to signed-in users (prevents anyone hitting the deployed
@@ -245,16 +191,29 @@ export function WeeklyReportModal({ board, open, onClose, senderName }: Props) {
           boardName: board.name,
           boardEmoji: board.emoji,
           senderName,
-          thisWeek: toPayload(sections[0].tasks),
-          nextWeek: toPayload(sections[1].tasks),
-          backlog: toPayload(sections[2].tasks),
+          boardId: board.id,
+          // The server stamps these as reported once the mail is away.
+          taskIds: sections.flatMap((sec) => sec.tasks.map((t) => t.id)),
+          thisWeek: toMailTasks(board, sections[0].tasks),
+          nextWeek: toMailTasks(board, sections[1].tasks),
+          backlog: toMailTasks(board, sections[2].tasks),
         }),
       });
-      const json = await res.json() as { ok?: boolean; error?: string };
+      const json = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        marked?: number;
+      };
       if (!res.ok) {
         setErrorMsg(json.error ?? "Failed to send.");
         setSendState("error");
       } else {
+        // Mirror the server's stamp so the board shows the reported marks
+        // straight away rather than waiting for the next fetch.
+        markTasksReported(
+          board.id,
+          sections.flatMap((sec) => sec.tasks.map((t) => t.id)),
+        );
         setSendState("success");
       }
     } catch (e) {
@@ -352,6 +311,65 @@ export function WeeklyReportModal({ board, open, onClose, senderName }: Props) {
               Always BCC'd: {BCC_ADDRESS} &middot; Type an email and press Enter or comma to add
             </div>
           </div>
+
+          {/* Scheduled send */}
+          <label
+            className={cn(
+              "flex cursor-pointer items-start gap-2.5 rounded-md border px-3 py-2.5 transition-colors",
+              board.autoReportEnabled
+                ? "border-brand-500/40 bg-brand-500/[0.06]"
+                : "border-line bg-subtle hover:border-line-strong",
+            )}
+          >
+            <input
+              type="checkbox"
+              checked={board.autoReportEnabled}
+              disabled={recipients.length === 0 && !board.autoReportEnabled}
+              onChange={(e) =>
+                setAutoReport(board.id, e.target.checked, recipients)
+              }
+              className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-brand-500"
+            />
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 text-[12px] font-medium text-fg">
+                <CalendarClock className="h-3 w-3 shrink-0 text-brand-500" />
+                Send this report automatically every Friday
+              </div>
+              <div className="mt-0.5 text-[10px] leading-relaxed text-fg-subtle">
+                {!board.autoReportEnabled && recipients.length === 0 ? (
+                  // Without this the checkbox is simply dead and the
+                  // reason is invisible.
+                  <>
+                    Add at least one recipient above to schedule this
+                    report.
+                  </>
+                ) : board.autoReportEnabled ? (
+                  <>
+                    On — sends at 6:30pm Malaysia time to the{" "}
+                    {board.autoReportRecipients.length} recipient
+                    {board.autoReportRecipients.length !== 1 ? "s" : ""} saved
+                    above, and marks the tasks it covers as reported.
+                    {board.autoReportLastSentAt && (
+                      <>
+                        {" "}
+                        Last sent{" "}
+                        {new Date(
+                          board.autoReportLastSentAt,
+                        ).toLocaleString()}
+                        .
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    Off — the report only goes out when you press Send.
+                    Turning this on saves the recipients above as the
+                    schedule&rsquo;s list.
+                  </>
+                )}
+              </div>
+            </div>
+          </label>
 
           {/* Task preview */}
           <div>

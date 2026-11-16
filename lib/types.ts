@@ -72,6 +72,11 @@ export interface Task {
   groupId: string;
   /** Every logged stretch of work; the task's duration is their sum. */
   timeEntries: TimeEntry[];
+  /**
+   * When this task was last included in a weekly report that actually
+   * sent. Null means management has not seen it yet.
+   */
+  reportedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -94,6 +99,12 @@ export interface Board {
   members: Member[];
   contacts: Contact[];
   shareToken?: string | null;
+  /** Include this board in the scheduled Friday report. */
+  autoReportEnabled: boolean;
+  /** Who the scheduled report goes to. Only used when enabled. */
+  autoReportRecipients: string[];
+  /** Last scheduled send, used to refuse a duplicate run. */
+  autoReportLastSentAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

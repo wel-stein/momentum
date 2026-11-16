@@ -118,6 +118,22 @@ interface Actions {
     role: Member["role"],
   ) => void;
 
+  /** Turn the scheduled Friday report on or off for a board. */
+  setAutoReport: (
+    boardId: string,
+    enabled: boolean,
+    recipients: string[],
+  ) => void;
+  /**
+   * Stamp tasks as reported. Called after a manual send succeeds; the
+   * scheduled send stamps them server-side.
+   */
+  markTasksReported: (
+    boardId: string,
+    taskIds: string[],
+    at?: string,
+  ) => void;
+
   enableSharing: (boardId: string) => string | null;
   disableSharing: (boardId: string) => void;
 
@@ -377,6 +393,8 @@ export const useStore = create<State & Actions>()(
           tasks: [],
           members: [me],
           contacts: [],
+          autoReportEnabled: false,
+          autoReportRecipients: [],
           createdAt: now,
           updatedAt: now,
         };
@@ -944,6 +962,48 @@ export const useStore = create<State & Actions>()(
         );
       },
 
+      setAutoReport: (boardId, enabled, recipients) => {
+        const at = nowIso();
+        let touched: Board | undefined;
+        set((s) => ({
+          boards: s.boards.map((b) => {
+            if (b.id !== boardId) return b;
+            touched = {
+              ...b,
+              autoReportEnabled: enabled,
+              autoReportRecipients: recipients,
+              updatedAt: at,
+            };
+            return touched;
+          }),
+        }));
+        if (touched) fnf(upsertBoard(touched));
+      },
+
+      markTasksReported: (boardId, taskIds, at) => {
+        const ids = new Set(taskIds);
+        if (ids.size === 0) return;
+        const board = get().boards.find((b) => b.id === boardId);
+        if (!board) return;
+        const stamp = at ?? nowIso();
+        const marked = board.tasks
+          .filter((t) => ids.has(t.id))
+          .map((t) => ({ ...t, reportedAt: stamp }));
+        if (marked.length === 0) return;
+        const byId = new Map(marked.map((t) => [t.id, t]));
+        set((s) => ({
+          boards: s.boards.map((b) =>
+            b.id !== boardId
+              ? b
+              : { ...b, tasks: b.tasks.map((t) => byId.get(t.id) ?? t) },
+          ),
+        }));
+        // updatedAt is deliberately left alone: being reported is not an
+        // edit to the task, and bumping it would reorder boards and make
+        // every reported task look freshly touched.
+        fnf(Promise.all(marked.map((t) => upsertTask(boardId, t))));
+      },
+
       enableSharing: (boardId) => {
         const board = get().boards.find((b) => b.id === boardId);
         if (!board) return null;
@@ -1063,6 +1123,14 @@ function mergeBoardRow(boards: Board[], c: RemoteChange) {
     emoji: ((row.emoji as string) ?? boards[idx].emoji) || "📋",
     view: ((row.view as Board["view"]) ?? boards[idx].view) || "kanban",
     shareToken: (row.share_token as string | null) ?? null,
+    autoReportEnabled:
+      (row.auto_report_enabled as boolean | null) ??
+      boards[idx].autoReportEnabled,
+    autoReportRecipients:
+      (row.auto_report_recipients as string[] | null) ??
+      boards[idx].autoReportRecipients,
+    autoReportLastSentAt:
+      (row.auto_report_last_sent_at as string | null) ?? null,
     updatedAt: incomingUpdated || boards[idx].updatedAt,
   };
   const next = boards.slice();
@@ -1202,6 +1270,7 @@ function mergeTaskRow(boards: Board[], c: RemoteChange) {
       startDate: (r.start_date as string | null) ?? undefined,
       dueDate: (r.due_date as string | null) ?? undefined,
       tags: (r.tags as string[] | null) ?? [],
+      reportedAt: (r.reported_at as string | null) ?? null,
       groupId: r.group_id as string,
       createdAt: (r.created_at as string) ?? new Date().toISOString(),
       updatedAt: incomingUpdated || new Date().toISOString(),

@@ -178,6 +178,8 @@ export function makeSampleBoard(
     tasks,
     members: [me, alex, sam],
     contacts: [jordan, priya],
+    autoReportEnabled: false,
+    autoReportRecipients: [],
     createdAt: now,
     updatedAt: now,
   };

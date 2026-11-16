@@ -11,6 +11,7 @@ import { AssigneePicker } from "./AssigneePicker";
 import { RequesterPicker } from "./RequesterPicker";
 import { DatePicker } from "./DatePicker";
 import { Popover } from "./Popover";
+import { ReportedBadge } from "./ReportedBadge";
 import { TimeCell } from "./TimeTracker";
 import { useReadOnly } from "./BoardContext";
 import { useConfirm } from "./ConfirmDialog";
@@ -538,6 +539,7 @@ function Row({
         </button>
       </td>
       <td className="px-3">
+        <div className="flex items-center gap-1.5">
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -558,6 +560,8 @@ function Row({
               "hover:border-line focus:border-brand-500/50 focus:bg-surface focus:outline-none focus:ring-1 focus:ring-brand-500/30",
           )}
         />
+        <ReportedBadge reportedAt={task.reportedAt} />
+        </div>
       </td>
       <td className="px-3">
         <StatusPill
