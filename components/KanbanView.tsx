@@ -22,6 +22,7 @@ import { PriorityIndicator } from "./PriorityPill";
 import { useReadOnly } from "./BoardContext";
 import { useRequesterNotify } from "./useRequesterNotify";
 import { TimeBadge } from "./TimeTracker";
+import { ReportedBadge } from "./ReportedBadge";
 
 interface Props {
   board: Board;
@@ -285,6 +286,7 @@ function CardInner({
             </span>
           )}
           <TimeBadge task={task} />
+          <ReportedBadge reportedAt={task.reportedAt} />
         </div>
         {assignees.length > 0 && (
           <AvatarStack members={assignees} max={3} size="xs" />

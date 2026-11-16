@@ -10,6 +10,9 @@ interface BoardRow {
   emoji: string | null;
   view: string;
   share_token: string | null;
+  auto_report_enabled: boolean | null;
+  auto_report_recipients: string[] | null;
+  auto_report_last_sent_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -43,6 +46,7 @@ interface TaskRow {
   start_date: string | null;
   due_date: string | null;
   tags: string[] | null;
+  reported_at: string | null;
   created_at: string;
   updated_at: string;
   task_assignees?: { member_id: string }[];
@@ -78,12 +82,15 @@ export async function fetchAllBoards(): Promise<FetchResult<Board[]>> {
   const { data, error } = await sb
     .from("boards")
     .select(
-      `id, name, description, emoji, view, share_token, created_at, updated_at,
+      `id, name, description, emoji, view, share_token,
+       auto_report_enabled, auto_report_recipients, auto_report_last_sent_at,
+       created_at, updated_at,
        board_groups (id, board_id, name, color, collapsed, position),
        board_members (id, board_id, name, email, avatar_color, avatar_url, auth_user_id, role),
        contacts (id, board_id, name, phone, email),
        tasks (id, board_id, group_id, title, description, status, priority,
-              requester_id, start_date, due_date, tags, created_at, updated_at,
+              requester_id, start_date, due_date, tags, reported_at,
+              created_at, updated_at,
               task_assignees (member_id),
               task_time_entries (id, task_id, member_id, started_at, ended_at,
                                  source, note, created_at))`,
@@ -138,6 +145,7 @@ function rowToBoard(b: BoardRow & {
     dueDate: t.due_date ?? undefined,
     tags: t.tags ?? [],
     groupId: t.group_id,
+    reportedAt: t.reported_at ?? null,
     timeEntries: (t.task_time_entries ?? [])
       .map(rowToTimeEntry)
       // Ordered by when each was recorded, not by startedAt: a typed-in
@@ -158,6 +166,9 @@ function rowToBoard(b: BoardRow & {
     members,
     contacts,
     shareToken: b.share_token ?? null,
+    autoReportEnabled: b.auto_report_enabled ?? false,
+    autoReportRecipients: b.auto_report_recipients ?? [],
+    autoReportLastSentAt: b.auto_report_last_sent_at ?? null,
     createdAt: b.created_at,
     updatedAt: b.updated_at,
   };
@@ -184,12 +195,15 @@ export async function fetchBoardByToken(
   const { data, error } = await sb
     .from("boards")
     .select(
-      `id, name, description, emoji, view, share_token, created_at, updated_at,
+      `id, name, description, emoji, view, share_token,
+       auto_report_enabled, auto_report_recipients, auto_report_last_sent_at,
+       created_at, updated_at,
        board_groups (id, board_id, name, color, collapsed, position),
        board_members (id, board_id, name, email, avatar_color, avatar_url, auth_user_id, role),
        contacts (id, board_id, name, phone, email),
        tasks (id, board_id, group_id, title, description, status, priority,
-              requester_id, start_date, due_date, tags, created_at, updated_at,
+              requester_id, start_date, due_date, tags, reported_at,
+              created_at, updated_at,
               task_assignees (member_id),
               task_time_entries (id, task_id, member_id, started_at, ended_at,
                                  source, note, created_at))`,
@@ -221,6 +235,8 @@ export async function upsertBoard(board: Board) {
     emoji: board.emoji,
     view: board.view,
     share_token: board.shareToken ?? null,
+    auto_report_enabled: board.autoReportEnabled,
+    auto_report_recipients: board.autoReportRecipients,
     created_at: board.createdAt,
     updated_at: board.updatedAt,
   });
@@ -307,6 +323,7 @@ export async function upsertTask(boardId: string, task: Task) {
     start_date: task.startDate ?? null,
     due_date: task.dueDate ?? null,
     tags: task.tags,
+    reported_at: task.reportedAt ?? null,
     created_at: task.createdAt,
     updated_at: task.updatedAt,
   });
