@@ -32,7 +32,7 @@ export function HomeShell() {
   useEffect(() => {
     if (!auth.ready) return;
     void setHydrated();
-  }, [setHydrated, auth.ready]);
+  }, [setHydrated, auth.ready, user?.id]);
 
   // C → new board (signed-in only)
   useEffect(() => {

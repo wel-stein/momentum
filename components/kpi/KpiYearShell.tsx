@@ -12,6 +12,7 @@ import {
   kpiAssessedCount,
 } from "@/lib/kpi-types";
 import { cn } from "@/lib/utils";
+import { SignInRequired, useAccountScope } from "@/components/SignInRequired";
 
 interface Props {
   year: number;
@@ -28,23 +29,30 @@ export function KpiYearShell({ year }: Props) {
   const [titleDraft, setTitleDraft] = useState("");
   const [timedOut, setTimedOut] = useState(false);
 
+  const scope = useAccountScope();
+
   useEffect(() => {
-    void setHydrated();
-  }, [setHydrated]);
+    if (!scope.ready) return;
+    void setHydrated(scope.userId);
+  }, [setHydrated, scope.ready, scope.userId]);
 
   const kpiSet = sets.find((s) => s.year === year);
 
   useEffect(() => {
     // Wait for the Supabase sync before creating, or a fresh browser would
     // race the fetch and upsert an empty duplicate set for this year.
-    if (hydrated && !kpiSet) createSet(year);
-  }, [year, hydrated, kpiSet, createSet]);
+    // And only for someone allowed to write: signed out, this would be a
+    // phantom set the database refuses.
+    if (hydrated && !kpiSet && scope.canEdit) createSet(year);
+  }, [year, hydrated, kpiSet, createSet, scope.canEdit]);
 
   useEffect(() => {
     if (kpiSet) return;
     const t = setTimeout(() => setTimedOut(true), 3000);
     return () => clearTimeout(t);
   }, [kpiSet]);
+
+  if (scope.blocked) return <SignInRequired what="KPIs" />;
 
   if (!kpiSet) {
     if (timedOut) {

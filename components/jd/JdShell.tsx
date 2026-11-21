@@ -21,6 +21,7 @@ import {
 } from "@/lib/jd-types";
 import { SyncBanner } from "@/components/SyncBanner";
 import { UserMenu } from "@/components/UserMenu";
+import { SignInRequired, useAccountScope } from "@/components/SignInRequired";
 import { cn } from "@/lib/utils";
 
 const STATUS_ORDER: JdStatus[] = ["not_started", "in_progress", "achieved"];
@@ -143,12 +144,17 @@ export function JdShell() {
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
+  const scope = useAccountScope();
+
   useEffect(() => {
-    void setHydrated();
-  }, [setHydrated]);
+    if (!scope.ready) return;
+    void setHydrated(scope.userId);
+  }, [setHydrated, scope.ready, scope.userId]);
 
   const overall = moduleProgress(module.items);
   const { achieved, inProgress, total } = moduleCounts(module.items);
+
+  if (scope.blocked) return <SignInRequired what="JD progress" />;
 
   return (
     <div className="min-h-screen">

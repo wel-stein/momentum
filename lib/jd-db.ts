@@ -46,7 +46,10 @@ export async function upsertJdModule(mod: JdModule) {
       created_at: mod.createdAt,
       updated_at: mod.updatedAt,
     },
-    { onConflict: "id" },
+    // The key is (id, user_id) since migration 0012. user_id is not sent:
+    // the database fills it from the caller's session, before the conflict
+    // check, so the upsert lands on this user's own copy.
+    { onConflict: "id,user_id" },
   );
   logErr("upsertJdModule", error);
 }

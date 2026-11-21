@@ -24,6 +24,14 @@ const DEFAULT_RECIPIENTS = (
   .filter((e) => EMAIL_RE.test(e));
 const BCC_ADDRESS = process.env.NEXT_PUBLIC_MAIL_BCC ?? "";
 
+function sameEmails(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const norm = (list: string[]) =>
+    list.map((e) => e.trim().toLowerCase()).sort();
+  const [x, y] = [norm(a), norm(b)];
+  return x.every((e, i) => e === y[i]);
+}
+
 // ---------------------------------------------------------------------------
 // Recipient chip input
 // ---------------------------------------------------------------------------
@@ -159,6 +167,13 @@ export function WeeklyReportModal({ board, open, onClose, senderName }: Props) {
   }, [open, board.autoReportEnabled, board.autoReportRecipients]);
 
   const sections = buildReportSections(board);
+
+  // Whether the chips above have drifted from the list the schedule will
+  // actually use. Order- and case-insensitive: the same people in a
+  // different order is not a change worth nagging about.
+  const scheduleOutOfDate =
+    board.autoReportEnabled &&
+    !sameEmails(recipients, board.autoReportRecipients);
 
   async function handleSend() {
     if (recipients.length === 0) return;
@@ -312,64 +327,107 @@ export function WeeklyReportModal({ board, open, onClose, senderName }: Props) {
             </div>
           </div>
 
-          {/* Scheduled send */}
-          <label
+          {/* Scheduled send. Not a <label> wrapping everything: the
+              "use these" button below must be clickable without toggling
+              the checkbox. */}
+          <div
             className={cn(
-              "flex cursor-pointer items-start gap-2.5 rounded-md border px-3 py-2.5 transition-colors",
+              "rounded-md border px-3 py-2.5 transition-colors",
               board.autoReportEnabled
                 ? "border-brand-500/40 bg-brand-500/[0.06]"
-                : "border-line bg-subtle hover:border-line-strong",
+                : "border-line bg-subtle",
             )}
           >
-            <input
-              type="checkbox"
-              checked={board.autoReportEnabled}
-              disabled={recipients.length === 0 && !board.autoReportEnabled}
-              onChange={(e) =>
-                setAutoReport(board.id, e.target.checked, recipients)
-              }
-              className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-brand-500"
-            />
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 text-[12px] font-medium text-fg">
-                <CalendarClock className="h-3 w-3 shrink-0 text-brand-500" />
-                Send this report automatically every Friday
-              </div>
-              <div className="mt-0.5 text-[10px] leading-relaxed text-fg-subtle">
+            <div className="flex items-start gap-2.5">
+              <input
+                id="auto-report-toggle"
+                type="checkbox"
+                checked={board.autoReportEnabled}
+                disabled={recipients.length === 0 && !board.autoReportEnabled}
+                onChange={(e) =>
+                  setAutoReport(board.id, e.target.checked, recipients)
+                }
+                className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer accent-brand-500 disabled:cursor-default"
+              />
+              <div className="min-w-0 flex-1">
+                <label
+                  htmlFor="auto-report-toggle"
+                  className="flex cursor-pointer items-center gap-1.5 text-[12px] font-medium text-fg"
+                >
+                  <CalendarClock className="h-3 w-3 shrink-0 text-brand-500" />
+                  Send this report automatically every Friday
+                </label>
+
                 {!board.autoReportEnabled && recipients.length === 0 ? (
                   // Without this the checkbox is simply dead and the
                   // reason is invisible.
-                  <>
-                    Add at least one recipient above to schedule this
-                    report.
-                  </>
-                ) : board.autoReportEnabled ? (
-                  <>
-                    On — sends at 6:30pm Malaysia time to the{" "}
-                    {board.autoReportRecipients.length} recipient
-                    {board.autoReportRecipients.length !== 1 ? "s" : ""} saved
-                    above, and marks the tasks it covers as reported.
-                    {board.autoReportLastSentAt && (
-                      <>
-                        {" "}
-                        Last sent{" "}
-                        {new Date(
-                          board.autoReportLastSentAt,
-                        ).toLocaleString()}
-                        .
-                      </>
-                    )}
-                  </>
-                ) : (
-                  <>
+                  <div className="mt-0.5 text-[10px] leading-relaxed text-fg-subtle">
+                    Add at least one recipient above to schedule this report.
+                  </div>
+                ) : !board.autoReportEnabled ? (
+                  <div className="mt-0.5 text-[10px] leading-relaxed text-fg-subtle">
                     Off — the report only goes out when you press Send.
                     Turning this on saves the recipients above as the
                     schedule&rsquo;s list.
-                  </>
+                  </div>
+                ) : (
+                  <div className="mt-1 space-y-1.5">
+                    <div className="text-[10px] leading-relaxed text-fg-subtle">
+                      On — sends Fridays at 6:30pm Malaysia time, and marks
+                      the tasks it covers as reported.
+                      {board.autoReportLastSentAt && (
+                        <>
+                          {" "}
+                          Last sent{" "}
+                          {new Date(
+                            board.autoReportLastSentAt,
+                          ).toLocaleString()}
+                          .
+                        </>
+                      )}
+                    </div>
+
+                    {/* The saved list, spelled out. A count alone meant you
+                        could not tell who Friday's report actually goes to
+                        without reading the database. */}
+                    <div>
+                      <div className="text-[9px] font-medium uppercase tracking-wider text-fg-faint">
+                        Friday&rsquo;s list
+                      </div>
+                      <div className="mt-0.5 flex flex-wrap gap-1">
+                        {board.autoReportRecipients.map((email) => (
+                          <span
+                            key={email}
+                            className="rounded-full bg-brand-500/10 px-1.5 py-0.5 text-[10px] text-brand-500"
+                          >
+                            {email}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {scheduleOutOfDate && (
+                      <div className="flex flex-wrap items-center gap-2 rounded border border-amber-500/30 bg-amber-500/[0.07] px-2 py-1.5">
+                        <span className="text-[10px] leading-relaxed text-amber-600 dark:text-amber-400">
+                          The recipients above differ from Friday&rsquo;s
+                          list. Editing them only changes this one send.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setAutoReport(board.id, true, recipients)
+                          }
+                          className="ml-auto shrink-0 rounded border border-amber-500/40 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 hover:bg-amber-500/10 dark:text-amber-400"
+                        >
+                          Use these {recipients.length} on Friday
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
-          </label>
+          </div>
 
           {/* Task preview */}
           <div>
