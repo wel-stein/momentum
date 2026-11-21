@@ -10,6 +10,7 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { SyncBanner } from "@/components/SyncBanner";
 import { UserMenu } from "@/components/UserMenu";
 import { Modal } from "@/components/Modal";
+import { SignInRequired, useAccountScope } from "@/components/SignInRequired";
 import { cn } from "@/lib/utils";
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -22,9 +23,12 @@ export function KpiShell() {
   const confirm = useConfirm();
   const router = useRouter();
 
+  const scope = useAccountScope();
+
   useEffect(() => {
-    void setHydrated();
-  }, [setHydrated]);
+    if (!scope.ready) return;
+    void setHydrated(scope.userId);
+  }, [setHydrated, scope.ready, scope.userId]);
 
   const [showNew, setShowNew] = useState(false);
   const [yearInput, setYearInput] = useState(String(CURRENT_YEAR));
@@ -38,6 +42,8 @@ export function KpiShell() {
     setShowNew(false);
     router.push(`/kpi/${year}`);
   }
+
+  if (scope.blocked) return <SignInRequired what="KPIs" />;
 
   return (
     <div className="min-h-screen">

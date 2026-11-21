@@ -21,12 +21,15 @@ let _syncRunning = false;
 
 interface JdState {
   module: JdModule;
+  /** The account the cached module belongs to; persisted alongside it. */
+  ownerId: string | null;
   hydrated: boolean;
   loading: boolean;
 }
 
 interface JdActions {
-  setHydrated: () => Promise<void>;
+  /** Load the signed-in user's module; pass null when signed out. */
+  setHydrated: (userId: string | null) => Promise<void>;
   setDutyStatus: (respId: string, dutyId: string, status: JdStatus) => void;
   setDutyEvidence: (respId: string, dutyId: string, evidence: string) => void;
 }
@@ -57,16 +60,33 @@ export const useJdStore = create<JdState & JdActions>()(
   persist(
     (set, get) => ({
       module: seedJdModule(),
+      ownerId: null,
       hydrated: false,
       loading: false,
 
-      setHydrated: async () => {
+      setHydrated: async (userId) => {
+        // JD progress is per user (migration 0012). A cache belonging to
+        // another account is reset to the blank template before anything
+        // else, so it is neither shown nor seeded upstream as this
+        // account's own. `?? null`: older caches carry no ownerId.
+        if ((get().ownerId ?? null) !== userId) {
+          set({ module: seedJdModule(), ownerId: userId, hydrated: false });
+          _syncDone = false;
+        }
         if (_syncDone || _syncRunning) return;
         _syncRunning = true;
         set({ loading: true });
 
         if (!isSupabaseConfigured()) {
           set({ hydrated: true, loading: false });
+          _syncDone = true;
+          _syncRunning = false;
+          return;
+        }
+
+        // Signed out: there is no account to load progress for.
+        if (!userId) {
+          set({ module: seedJdModule(), hydrated: true, loading: false });
           _syncDone = true;
           _syncRunning = false;
           return;
@@ -105,7 +125,7 @@ export const useJdStore = create<JdState & JdActions>()(
     {
       name: "momentum-jd-store",
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ module: s.module }),
+      partialize: (s) => ({ module: s.module, ownerId: s.ownerId }),
     },
   ),
 );
