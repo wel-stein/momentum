@@ -81,7 +81,7 @@ export function BoardShell({
     if (boardOverride) return;
     if (!auth.ready) return;
     void setHydrated();
-  }, [setHydrated, boardOverride, auth.ready]);
+  }, [setHydrated, boardOverride, auth.ready, user?.id]);
 
   useEffect(() => {
     if (board) setTitleDraft(board.name);

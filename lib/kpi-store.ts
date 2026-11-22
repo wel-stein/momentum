@@ -30,12 +30,18 @@ let _syncRunning = false;
 
 interface KpiState {
   sets: KpiSet[];
+  /**
+   * The account the cached `sets` belong to. Persisted with them, so a
+   * reload on a shared browser can tell the cache is someone else's.
+   */
+  ownerId: string | null;
   hydrated: boolean;
   loading: boolean;
 }
 
 interface KpiActions {
-  setHydrated: () => Promise<void>;
+  /** Load the signed-in user's sets; pass null when signed out. */
+  setHydrated: (userId: string | null) => Promise<void>;
   createSet: (year: number, title?: string) => string;
   deleteSet: (setId: string) => void;
   renameSet: (setId: string, title: string) => void;
@@ -80,16 +86,35 @@ export const useKpiStore = create<KpiState & KpiActions>()(
   persist(
     (set, get) => ({
       sets: [],
+      ownerId: null,
       hydrated: false,
       loading: false,
 
-      setHydrated: async () => {
+      setHydrated: async (userId) => {
+        // KPI sets are per user (migration 0012). If the cache belongs to
+        // a different account — or to nobody — drop it before anything
+        // else. Otherwise a shared browser would show the previous
+        // account's KPIs and, worse, upload them as the new account's own
+        // through the seed-from-local path below.
+        // `?? null`: caches written before ownerId existed have none.
+        if ((get().ownerId ?? null) !== userId) {
+          set({ sets: [], ownerId: userId, hydrated: false });
+          _syncDone = false;
+        }
         if (_syncDone || _syncRunning) return;
         _syncRunning = true;
         set({ loading: true });
 
         if (!isSupabaseConfigured()) {
           set({ hydrated: true, loading: false });
+          _syncDone = true;
+          _syncRunning = false;
+          return;
+        }
+
+        // Signed out: nothing here belongs to a visitor.
+        if (!userId) {
+          set({ sets: [], hydrated: true, loading: false });
           _syncDone = true;
           _syncRunning = false;
           return;
@@ -261,7 +286,7 @@ export const useKpiStore = create<KpiState & KpiActions>()(
     {
       name: "momentum-kpi-store",
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ sets: s.sets }),
+      partialize: (s) => ({ sets: s.sets, ownerId: s.ownerId }),
     },
   ),
 );

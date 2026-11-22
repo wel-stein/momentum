@@ -278,10 +278,27 @@ export const useStore = create<State & Actions>()(
       syncError: null,
 
       setCurrentUser: (user) => {
-        set({
-          currentUser: user,
-          currentUserId: user?.id ?? get().currentUserId,
-        });
+        const prevId = get().currentUser?.id ?? null;
+        const nextId = user?.id ?? null;
+        if (prevId !== nextId) {
+          // Boards belong to whoever is signed in. On sign-out — or a
+          // switch to another account — drop the previous user's data
+          // from memory at once rather than leaving it on screen until
+          // the next reload, and force a refetch for whoever arrives.
+          set({
+            currentUser: user,
+            currentUserId: user?.id ?? get().currentUserId,
+            boards: [],
+            hydrated: false,
+            loading: false,
+            syncError: null,
+          });
+        } else {
+          set({
+            currentUser: user,
+            currentUserId: user?.id ?? get().currentUserId,
+          });
+        }
         if (!user) return;
         const { boards: nextBoards, upserts } = claimMyMember(
           get().boards,
@@ -311,6 +328,19 @@ export const useStore = create<State & Actions>()(
             hydrated: true,
             loading: false,
             syncError: "Supabase env vars missing — using local sample only.",
+          });
+          return;
+        }
+
+        // Boards are private to their members (migration 0011), so a
+        // signed-out visitor has nothing to load. Skip the round trip
+        // rather than asking and being handed an empty list.
+        if (!user) {
+          set({
+            currentUserId,
+            boards: [],
+            hydrated: true,
+            loading: false,
           });
           return;
         }
